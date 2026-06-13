@@ -57,6 +57,7 @@ OPENAI_MODEL=gpt-4o-mini
 | PATCH | `/api/portfolio/{id}` | Обновить позицию |
 | DELETE | `/api/portfolio/{id}` | Удалить позицию |
 | GET | `/api/portfolio/dashboard` | Статистика dashboard |
+| GET | `/api/stocks/{ticker}` | Данные акции (Yahoo Finance) |
 | GET | `/api/stocks/{ticker}/quote` | Котировка |
 | GET | `/api/stocks/{ticker}/analysis` | AI-анализ |
 

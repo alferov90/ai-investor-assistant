@@ -60,6 +60,17 @@ class PortfolioHoldingRead(BaseModel):
     updated_at: datetime
 
 
+class StockDetail(BaseModel):
+    ticker: str
+    name: str
+    currency: str = "USD"
+    current_price: float
+    market_cap: float | None = None
+    pe_ratio: float | None = None
+    eps: float | None = None
+    revenue_growth: float | None = None
+
+
 class StockQuote(BaseModel):
     ticker: str
     name: str
