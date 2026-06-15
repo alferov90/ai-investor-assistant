@@ -8,13 +8,13 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.config import settings
-from app.schemas import CompanyProfile, PortfolioAnalysis, StockAnalysis
+from app.schemas import CompanyProfile, PortfolioAnalysis, StockAnalysis, StockQuote
 from app.services.stock_service import StockService, stock_service
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a professional investment analyst.
-Analyze stocks based on financial data and company description.
+SYSTEM_PROMPT = """You are a skeptical professional investment analyst.
+Analyze only the supplied data. Do not use general knowledge about the company.
 Respond ONLY with valid JSON in Russian language using this schema:
 {
   "strengths": ["string"],
@@ -23,12 +23,17 @@ Respond ONLY with valid JSON in Russian language using this schema:
   "investment_conclusion": "string",
   "rating": 1-10 integer
 }
-Be factual, concise, and balanced. Rating 1 = strong sell, 10 = strong buy.
-The investment_conclusion must be 3-5 sentences and include:
-1) the main investment thesis,
-2) the most important supporting factor,
-3) the principal risk,
-4) an actionable stance: avoid, watch, cautiously accumulate, or hold.
+Rules:
+- Every strength, weakness, and risk must cite a supplied number or a specific missing input.
+- Never write generic claims such as "лидер отрасли", "сильная компания", or "имеет потенциал".
+- A one-day price move is context, not a buy/sell signal.
+- If fewer than two fundamental metrics are available, rating must be 4-6 and confidence is low.
+- Rating 1 = strong sell, 10 = strong buy.
+- The investment_conclusion must use exactly this practical structure in 4 short sentences:
+  1) "Вердикт: <ИЗБЕГАТЬ/НАБЛЮДАТЬ/ОСТОРОЖНО ПОКУПАТЬ/ДЕРЖАТЬ>; уверенность <низкая/средняя/высокая>."
+  2) State the strongest supplied evidence with numbers.
+  3) State the main limitation or risk.
+  4) State a concrete trigger that would improve or worsen the view.
 Never claim certainty, invent missing data, or mention API keys/data-provider setup."""
 
 
@@ -56,7 +61,12 @@ class AIAnalysisService:
 
     def analyze(self, ticker: str) -> StockAnalysis:
         profile = self.stock_service.get_company_profile(ticker)
-        prompt = self._build_prompt(profile)
+        try:
+            quote = self.stock_service.get_quote(ticker)
+        except Exception as exc:
+            logger.warning("Quote context unavailable for %s: %s", ticker, exc)
+            quote = None
+        prompt = self._build_prompt(profile, quote)
 
         if self._yandex_configured():
             try:
@@ -77,12 +87,26 @@ class AIAnalysisService:
 
         return self._rule_based_analysis(profile)
 
-    def _build_prompt(self, profile: CompanyProfile) -> str:
+    def _build_prompt(self, profile: CompanyProfile, quote: StockQuote | None = None) -> str:
         f = profile.financials
         market_cap = f"{f.market_cap:,.0f}" if f.market_cap else "N/A"
         pe = f"{f.pe_ratio:.2f}" if f.pe_ratio is not None else "N/A"
         eps = f"{f.eps:.2f}" if f.eps is not None else "N/A"
         growth = f"{f.revenue_growth:.2f}%" if f.revenue_growth is not None else "N/A"
+        available_fundamentals = sum(
+            value is not None
+            for value in (f.market_cap, f.pe_ratio, f.eps, f.revenue_growth)
+        )
+        daily_change = f"{quote.change_percent:+.2f}%" if quote else "N/A"
+        year_range = "N/A"
+        range_position = "N/A"
+        if quote and quote.fifty_two_week_low is not None and quote.fifty_two_week_high is not None:
+            low = quote.fifty_two_week_low
+            high = quote.fifty_two_week_high
+            year_range = f"{low:.2f}–{high:.2f} {quote.currency}"
+            if high > low:
+                position = (quote.price - low) / (high - low) * 100
+                range_position = f"{position:.1f}% от минимума к максимуму"
 
         return f"""Проанализируй акцию для частного инвестора.
 
@@ -97,9 +121,16 @@ class AIAnalysisService:
 - P/E: {pe}
 - EPS: {eps}
 - Рост выручки (YoY): {growth}
+- Изменение за последнюю сессию: {daily_change}
+- Диапазон за 52 недели: {year_range}
+- Положение цены внутри диапазона: {range_position}
+- Доступно фундаментальных метрик: {available_fundamentals} из 4
 
 Описание компании:
 {profile.description}
+
+Отделяй наблюдаемые данные от предположений. Если фундаментальных метрик меньше двух,
+не оценивай качество бизнеса и не предлагай уверенную покупку или продажу.
 """
 
     def _call_openai(self, client: OpenAI, prompt: str) -> dict:
@@ -133,7 +164,7 @@ class AIAnalysisService:
             ),
             "completionOptions": {
                 "stream": False,
-                "temperature": 0.3,
+                "temperature": 0.45,
                 "maxTokens": 2000,
             },
             "messages": [
@@ -185,9 +216,9 @@ class AIAnalysisService:
             strengths.append(f"Сектор: {profile.sector}")
 
         if not strengths:
-            strengths.append("Доступны актуальные рыночные и финансовые данные")
+            strengths.append(f"Цена ${f.current_price:.2f} доступна, но фундаментальные метрики отсутствуют")
         if not weaknesses:
-            weaknesses.append("Ограниченная глубина анализа без OpenAI")
+            weaknesses.append("Недостаточно фундаментальных метрик для оценки качества бизнеса")
         if not risks:
             risks.append("Рыночная волатильность и макроэкономические факторы")
 
@@ -222,11 +253,11 @@ class AIAnalysisService:
         )
         main_risk = risks[0].rstrip(".")
         conclusion = (
-            f"{profile.name} ({profile.ticker}) торгуется по ${f.current_price:.2f} "
-            f"и получает базовую оценку {rating}/10. "
+            f"Вердикт: НАБЛЮДАТЬ; уверенность низкая. "
             f"{evidence_text} "
             f"Главный риск: {main_risk.lower()}. "
-            f"{stance}; перед решением стоит проверить свежую отчётность и допустимый уровень риска."
+            f"Оценка улучшится после появления свежих данных по выручке, прибыли и P/E; "
+            f"до этого {stance.lower()}."
         )
 
         return StockAnalysis(
