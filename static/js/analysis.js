@@ -51,6 +51,75 @@ function ratingColor(rating) {
   return "text-red-400";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function splitConclusion(text) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+(?=[А-ЯA-ZЁ])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function parseVerdict(sentence) {
+  const match = sentence.match(/Вердикт:\s*([^;.!?]+)(?:;\s*уверенность\s*([^.!?]+))?/i);
+  if (!match) return null;
+  return {
+    verdict: match[1].trim().toUpperCase(),
+    confidence: (match[2] || "").trim().replace(/\.$/, ""),
+  };
+}
+
+function renderConclusion(text) {
+  const el = document.getElementById("investment-conclusion");
+  const parts = splitConclusion(text);
+  const verdict = parts.length ? parseVerdict(parts[0]) : null;
+  const body = verdict ? parts.slice(1) : parts;
+
+  if (!parts.length) {
+    el.innerHTML = `<p class="conclusion-muted">Вывод пока недоступен.</p>`;
+    return;
+  }
+
+  const labels = ["Контекст", "Главный риск", "Триггеры"];
+  el.innerHTML = `
+    ${
+      verdict
+        ? `<div class="conclusion-verdict">
+            <div>
+              <p class="conclusion-label">Вердикт</p>
+              <p class="conclusion-title">${escapeHtml(verdict.verdict)}</p>
+            </div>
+            ${
+              verdict.confidence
+                ? `<span class="conclusion-confidence">Уверенность: ${escapeHtml(verdict.confidence)}</span>`
+                : ""
+            }
+          </div>`
+        : ""
+    }
+    <div class="conclusion-points">
+      ${body
+        .map(
+          (sentence, index) => `
+          <div class="conclusion-point">
+            <span class="conclusion-point-label">${labels[index] || "Деталь"}</span>
+            <p>${escapeHtml(sentence)}</p>
+          </div>
+        `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderStockMeta(stock) {
   document.getElementById("stock-name").textContent = stock.name;
   document.getElementById("stock-ticker").textContent = stock.ticker;
@@ -89,7 +158,7 @@ function renderAnalysis(analysis) {
   renderList("strengths", analysis.strengths);
   renderList("weaknesses", analysis.weaknesses);
   renderList("risks", analysis.risks);
-  document.getElementById("investment-conclusion").textContent = analysis.investment_conclusion;
+  renderConclusion(analysis.investment_conclusion);
 
   const badge = document.getElementById("ai-badge");
   if (analysis.ai_powered) {

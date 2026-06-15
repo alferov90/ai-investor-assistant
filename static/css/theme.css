@@ -681,8 +681,96 @@ select.input-field option {
   gap: 1.5rem;
 }
 
+.investment-conclusion {
+  display: grid;
+  gap: 1rem;
+}
+
+.conclusion-verdict {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(45, 212, 191, 0.14), rgba(56, 189, 248, 0.06)),
+    rgba(15, 23, 42, 0.55);
+}
+
+.conclusion-label,
+.conclusion-point-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.conclusion-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--text-main);
+}
+
+.conclusion-confidence {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.conclusion-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.conclusion-point {
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.34);
+}
+
+.conclusion-point p {
+  color: var(--text-main);
+  font-size: 0.93rem;
+  line-height: 1.55;
+}
+
+.conclusion-muted {
+  color: var(--text-muted);
+}
+
 @media (min-width: 1024px) {
   .chart-grid-analysis { grid-template-columns: 1fr 200px; }
+}
+
+@media (max-width: 760px) {
+  .conclusion-verdict {
+    display: grid;
+  }
+
+  .conclusion-confidence {
+    width: fit-content;
+  }
+
+  .conclusion-points {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Sparklines in cards */
