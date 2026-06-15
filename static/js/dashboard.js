@@ -48,8 +48,8 @@ async function updateTelegramUI() {
     e.preventDefault();
     try {
       const res = await apiFetch("/api/telegram/link", { method: "POST" });
-      window.open(res.link, "_blank");
       errorEl.textContent = "Нажмите Start в Telegram";
+      window.location.assign(res.link);
     } catch (err) {
       errorEl.textContent = err.message;
     }
