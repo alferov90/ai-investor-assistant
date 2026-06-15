@@ -114,6 +114,7 @@ loadDashboard().catch((err) => {
   `;
 });
 updateTelegramUI();
+window.addEventListener("focus", updateTelegramUI);
 
 document.getElementById("btn-portfolio-ai").onclick = async () => {
   const el = document.getElementById("portfolio-ai-result");
