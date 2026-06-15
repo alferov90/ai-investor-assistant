@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.request
 
 from fastapi import HTTPException, status
 from openai import OpenAI
@@ -32,7 +33,7 @@ Never claim certainty, invent missing data, or mention API keys/data-provider se
 
 
 class AIAnalysisService:
-    """OpenAI-powered investment analysis for stocks."""
+    """AI-powered investment analysis with provider fallbacks."""
 
     def __init__(
         self,
@@ -55,11 +56,18 @@ class AIAnalysisService:
 
     def analyze(self, ticker: str) -> StockAnalysis:
         profile = self.stock_service.get_company_profile(ticker)
+        prompt = self._build_prompt(profile)
+
+        if self._yandex_configured():
+            try:
+                data = self._call_yandex(prompt, SYSTEM_PROMPT)
+                return self._parse_response(profile, data, ai_powered=True)
+            except Exception as exc:
+                logger.warning("YandexGPT analysis failed, trying fallback: %s", exc)
 
         client = self._get_client()
         if client:
             try:
-                prompt = self._build_prompt(profile)
                 data = self._call_openai(client, prompt)
                 return self._parse_response(profile, data, ai_powered=True)
             except HTTPException:
@@ -113,6 +121,43 @@ class AIAnalysisService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Invalid response from OpenAI",
             ) from exc
+
+    @staticmethod
+    def _yandex_configured() -> bool:
+        return bool(settings.yandex_cloud_api_key and settings.yandex_cloud_folder_id)
+
+    def _call_yandex(self, prompt: str, system_prompt: str) -> dict:
+        body = {
+            "modelUri": (
+                f"gpt://{settings.yandex_cloud_folder_id}/{settings.yandex_gpt_model}"
+            ),
+            "completionOptions": {
+                "stream": False,
+                "temperature": 0.3,
+                "maxTokens": 2000,
+            },
+            "messages": [
+                {"role": "system", "text": system_prompt},
+                {"role": "user", "text": prompt},
+            ],
+        }
+        request = urllib.request.Request(
+            "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "Authorization": f"Api-Key {settings.yandex_cloud_api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=60) as response:
+            payload = json.load(response)
+
+        content = payload["result"]["alternatives"][0]["message"]["text"].strip()
+        if content.startswith("```"):
+            content = content.removeprefix("```json").removeprefix("```")
+            content = content.removesuffix("```").strip()
+        return json.loads(content)
 
     def _rule_based_analysis(self, profile: CompanyProfile) -> StockAnalysis:
         f = profile.financials
@@ -257,25 +302,35 @@ class AIAnalysisService:
             "Дай оценку диверсификации, рисков и общую рекомендацию."
         )
 
+        portfolio_system_prompt = (
+            "You are a portfolio analyst. Respond ONLY with valid JSON in Russian: "
+            "summary, strengths[], weaknesses[], risks[], recommendation, rating (1-10)."
+        )
+        data = None
+        if self._yandex_configured():
+            try:
+                data = self._call_yandex(prompt, portfolio_system_prompt)
+            except Exception as exc:
+                logger.warning("YandexGPT portfolio analysis failed: %s", exc)
+
         client = self._get_client()
-        if client:
+        if data is None and client:
             try:
                 response = client.chat.completions.create(
                     model=settings.openai_model,
                     messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a portfolio analyst. Respond in Russian as JSON: "
-                                "summary, strengths[], weaknesses[], risks[], recommendation, rating (1-10)."
-                            ),
-                        },
+                        {"role": "system", "content": portfolio_system_prompt},
                         {"role": "user", "content": prompt},
                     ],
                     response_format={"type": "json_object"},
                     temperature=0.3,
                 )
                 data = json.loads(response.choices[0].message.content or "{}")
+            except Exception as exc:
+                logger.warning("OpenAI portfolio analysis failed: %s", exc)
+
+        if data is not None:
+            try:
                 rating = max(1, min(10, int(data.get("rating", 5))))
                 return PortfolioAnalysis(
                     summary=str(data.get("summary", "")),
@@ -289,12 +344,12 @@ class AIAnalysisService:
                     tickers=tickers,
                 )
             except Exception as exc:
-                logger.warning("Portfolio AI analysis failed: %s", exc)
+                logger.warning("Invalid portfolio AI response: %s", exc)
 
         return PortfolioAnalysis(
             summary=f"Портфель из {len(holdings)} позиций на сумму ${total_value:.2f} (P/L {total_pnl_pct:+.1f}%).",
             strengths=[f"Диверсификация: {len(tickers)} тикеров"] if len(tickers) > 1 else ["Компактный портфель"],
-            weaknesses=["Добавьте OPENAI_API_KEY для глубокого AI-анализа"],
+            weaknesses=["Недостаточно данных для глубокого AI-анализа"],
             risks=["Концентрация в отдельных позициях"] if len(tickers) < 3 else ["Рыночная волатильность"],
             recommendation="Держать и ребалансировать при необходимости",
             rating=6 if total_pnl_pct >= 0 else 4,

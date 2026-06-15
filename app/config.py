@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    yandex_cloud_api_key: str = ""
+    yandex_cloud_folder_id: str = ""
+    yandex_gpt_model: str = "yandexgpt/latest"
     stock_cache_ttl_seconds: int = 300
     twelve_data_api_key: str = ""
     yahoo_proxy_url: str = ""
