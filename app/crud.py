@@ -173,6 +173,35 @@ def delete_watchlist_item(db: Session, item: models.WatchlistItem) -> None:
     db.commit()
 
 
+def get_watchlist_by_ticker(
+    db: Session, user_id: int, ticker: str
+) -> models.WatchlistItem | None:
+    return (
+        db.query(models.WatchlistItem)
+        .filter(
+            models.WatchlistItem.user_id == user_id,
+            models.WatchlistItem.ticker == ticker.upper(),
+        )
+        .first()
+    )
+
+
+def delete_watchlist_by_ticker(db: Session, user_id: int, ticker: str) -> bool:
+    item = get_watchlist_by_ticker(db, user_id, ticker)
+    if not item:
+        return False
+    delete_watchlist_item(db, item)
+    return True
+
+
+def list_telegram_users(db: Session) -> list[models.User]:
+    return (
+        db.query(models.User)
+        .filter(models.User.telegram_chat_id.isnot(None))
+        .all()
+    )
+
+
 # --- Analysis history ---
 
 

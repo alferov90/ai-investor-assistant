@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
     telegram_proxy_url: str = ""
+    telegram_digest_hour: int = 6  # UTC; 6 = 09:00 MSK
+    telegram_digest_minute: int = 0
 
 
 settings = Settings()

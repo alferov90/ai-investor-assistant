@@ -13,7 +13,7 @@ fi
 
 : "${DEPLOY_HOST:?Set DEPLOY_HOST in .deploy.env}"
 : "${DEPLOY_USER:=dev}"
-: "${DEPLOY_REPO:=git@github.com:alferov90/ai-investor-assistant.git}"
+: "${DEPLOY_REPO:=https://github.com/alferov90/ai-investor-assistant.git}"
 : "${DEPLOY_BRANCH:=main}"
 
 # ~/ in .deploy.env expands to Mac home when sourced — use absolute remote path.
@@ -55,7 +55,8 @@ if [[ ! -d "$DEPLOY_PATH/.git" ]]; then
 fi
 
 cd "$DEPLOY_PATH"
-echo "→ git fetch && pull"
+echo "→ git remote & pull"
+git remote set-url origin "$DEPLOY_REPO"
 git fetch origin "$DEPLOY_BRANCH"
 git checkout "$DEPLOY_BRANCH"
 git pull origin "$DEPLOY_BRANCH" --rebase

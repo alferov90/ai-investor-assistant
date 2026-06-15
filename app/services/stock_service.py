@@ -49,6 +49,41 @@ def _run_with_timeout(func, *args):
     return future.result(timeout=settings.yahoo_fetch_timeout_seconds)
 
 
+def _fetch_twelve_data(symbol: str) -> dict[str, Any]:
+    token = settings.twelve_data_api_key
+    if not token:
+        raise ValueError("Twelve Data API key not configured")
+
+    response = httpx.get(
+        "https://api.twelvedata.com/quote",
+        params={"symbol": symbol, "apikey": token},
+        timeout=TWELVE_DATA_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    data = response.json()
+
+    if data.get("status") == "error":
+        raise ValueError(data.get("message") or f"No Twelve Data quote for {symbol}")
+
+    current = _safe_float(data.get("close"))
+    if current is None:
+        raise ValueError(f"No price in Twelve Data for {symbol}")
+
+    previous = _safe_float(data.get("previous_close")) or current
+    fifty_two = data.get("fifty_two_week") or {}
+
+    return {
+        "regularMarketPrice": current,
+        "regularMarketPreviousClose": previous,
+        "shortName": str(data.get("name") or symbol),
+        "longName": str(data.get("name") or symbol),
+        "currency": str(data.get("currency") or "USD"),
+        "fiftyTwoWeekHigh": _safe_float(fifty_two.get("high")),
+        "fiftyTwoWeekLow": _safe_float(fifty_two.get("low")),
+        "_source": "twelve_data",
+    }
+
+
 def _fetch_yahoo_chart(symbol: str) -> dict[str, Any]:
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
     params = {"interval": "1d", "range": "5d", "includePrePost": "false"}
@@ -180,10 +215,12 @@ def _fetch_finnhub(symbol: str) -> dict[str, Any]:
 
 
 def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
-    """Finnhub → Yahoo Chart → Stooq. No yfinance."""
+    """Twelve Data → Finnhub → Yahoo Chart → Stooq."""
     symbol = symbol.strip().upper()
     providers: list[tuple[str, Any]] = []
 
+    if settings.twelve_data_api_key:
+        providers.append(("twelve_data", _fetch_twelve_data))
     if settings.finnhub_api_key:
         providers.append(("finnhub", _fetch_finnhub))
     providers.append(("yahoo", _fetch_yahoo_chart))
@@ -203,7 +240,7 @@ def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
         status_code=status.HTTP_502_BAD_GATEWAY,
         detail=(
             f"Unable to fetch data for {symbol}. "
-            "Add FINNHUB_API_KEY (finnhub.io) or YAHOO_PROXY_URL to .env"
+            "Add TWELVE_DATA_API_KEY, FINNHUB_API_KEY, or YAHOO_PROXY_URL to .env"
         ),
     )
 
@@ -284,38 +321,35 @@ class StockService:
         if cached:
             return StockQuote(**cached)
 
-        if settings.twelve_data_api_key:
-            quote = self._fetch_twelve_data_quote(symbol)
-        else:
-            info, history = fetch_market_data(symbol)
-            current = self._resolve_price(info, history)
-            if current is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No price data for {symbol}",
-                )
-
-            previous = _safe_float(info.get("regularMarketPreviousClose")) or current
-            if previous == current and len(history) > 1:
-                previous = history[-2]
-
-            change = current - previous
-            change_percent = (change / previous * 100) if previous else 0.0
-
-            quote = StockQuote(
-                ticker=symbol,
-                name=str(info.get("shortName") or info.get("longName") or symbol),
-                price=round(current, 2),
-                change=round(change, 2),
-                change_percent=round(change_percent, 2),
-                currency=str(info.get("currency") or "USD"),
-                market_cap=_safe_float(info.get("marketCap")),
-                pe_ratio=_safe_float(info.get("trailingPE")),
-                fifty_two_week_high=_safe_float(info.get("fiftyTwoWeekHigh")),
-                fifty_two_week_low=_safe_float(info.get("fiftyTwoWeekLow")),
-                sector=info.get("sector"),
-                industry=info.get("industry"),
+        info, history = fetch_market_data(symbol)
+        current = self._resolve_price(info, history)
+        if current is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No price data for {symbol}",
             )
+
+        previous = _safe_float(info.get("regularMarketPreviousClose")) or current
+        if previous == current and len(history) > 1:
+            previous = history[-2]
+
+        change = current - previous
+        change_percent = (change / previous * 100) if previous else 0.0
+
+        quote = StockQuote(
+            ticker=symbol,
+            name=str(info.get("shortName") or info.get("longName") or symbol),
+            price=round(current, 2),
+            change=round(change, 2),
+            change_percent=round(change_percent, 2),
+            currency=str(info.get("currency") or "USD"),
+            market_cap=_safe_float(info.get("marketCap")),
+            pe_ratio=_safe_float(info.get("trailingPE")),
+            fifty_two_week_high=_safe_float(info.get("fiftyTwoWeekHigh")),
+            fifty_two_week_low=_safe_float(info.get("fiftyTwoWeekLow")),
+            sector=info.get("sector"),
+            industry=info.get("industry"),
+        )
         cache_set(cache_key, quote.model_dump(), self.cache_ttl)
         return quote
 
@@ -327,66 +361,6 @@ class StockService:
             except HTTPException:
                 continue
         return result
-
-    def _fetch_twelve_data_quote(self, symbol: str) -> StockQuote:
-        if not settings.twelve_data_api_key:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Twelve Data API key is not configured",
-            )
-
-        try:
-            response = httpx.get(
-                "https://api.twelvedata.com/quote",
-                params={"symbol": symbol, "apikey": settings.twelve_data_api_key},
-                timeout=TWELVE_DATA_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-            data = response.json()
-        except httpx.HTTPError as exc:
-            logger.exception("Failed to fetch Twelve Data quote for %s", symbol)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Unable to fetch market data for {symbol}",
-            ) from exc
-
-        if data.get("status") == "error":
-            message = data.get("message") or f"Ticker {symbol} not found"
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
-
-        current = _safe_float(data.get("close"))
-        previous = _safe_float(data.get("previous_close"))
-        if current is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No price data for {symbol}",
-            )
-
-        if previous is None:
-            previous = current
-
-        change = _safe_float(data.get("change"))
-        if change is None:
-            change = current - previous
-
-        change_percent = _safe_float(data.get("percent_change"))
-        if change_percent is None:
-            change_percent = (change / previous * 100) if previous else 0.0
-
-        return StockQuote(
-            ticker=str(data.get("symbol") or symbol).upper(),
-            name=str(data.get("name") or symbol),
-            price=round(current, 2),
-            change=round(change, 2),
-            change_percent=round(change_percent, 2),
-            currency=str(data.get("currency") or "USD"),
-            market_cap=None,
-            pe_ratio=None,
-            fifty_two_week_high=_safe_float((data.get("fifty_two_week") or {}).get("high")),
-            fifty_two_week_low=_safe_float((data.get("fifty_two_week") or {}).get("low")),
-            sector=None,
-            industry=None,
-        )
 
     @staticmethod
     def _resolve_price(info: dict, history: list[float]) -> float | None:

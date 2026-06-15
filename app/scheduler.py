@@ -6,6 +6,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.config import settings
 from app.database import SessionLocal
 from app.services.alert_checker import check_price_alerts
+from app.services.portfolio_digest import send_morning_digests
 from app.services.telegram_bot import telegram_bot_service
 from app.telegram_client import delete_webhook, get_updates, is_configured, set_bot_commands
 
@@ -53,6 +54,18 @@ def run_alert_checks() -> None:
         db.close()
 
 
+def run_morning_digest() -> None:
+    db = SessionLocal()
+    try:
+        count = send_morning_digests(db)
+        if count:
+            logger.info("Sent %s morning digest(s)", count)
+    except Exception:
+        logger.exception("Morning digest failed")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     global _scheduler
     if _scheduler is not None:
@@ -87,6 +100,22 @@ def start_scheduler() -> None:
         next_run_time=datetime.now(),
     )
     logger.info("Price alert checker started (every 5 min)")
+
+    if is_configured():
+        _scheduler.add_job(
+            run_morning_digest,
+            "cron",
+            hour=settings.telegram_digest_hour,
+            minute=settings.telegram_digest_minute,
+            id="digest",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info(
+            "Morning digest scheduled at %02d:%02d UTC",
+            settings.telegram_digest_hour,
+            settings.telegram_digest_minute,
+        )
 
     _scheduler.start()
 

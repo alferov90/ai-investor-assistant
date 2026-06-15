@@ -79,8 +79,14 @@ def delete_webhook() -> bool:
 def set_bot_commands() -> bool:
     commands = [
         {"command": "start", "description": "Начать / подключить аккаунт"},
-        {"command": "analyze", "description": "AI-анализ акции (например /analyze NVDA)"},
+        {"command": "help", "description": "Все команды бота"},
+        {"command": "analyze", "description": "AI-анализ акции (/analyze NVDA)"},
         {"command": "portfolio", "description": "Мой портфель"},
+        {"command": "digest", "description": "Дайджест портфеля"},
+        {"command": "watchlist", "description": "Список наблюдения"},
+        {"command": "watchadd", "description": "Добавить в watchlist"},
+        {"command": "alerts", "description": "Мои алерты"},
+        {"command": "alert", "description": "Создать алерт (/alert AAPL above 150)"},
     ]
     data = _api_post("setMyCommands", {"commands": commands})
     return bool(data and data.get("ok"))

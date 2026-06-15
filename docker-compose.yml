@@ -62,6 +62,8 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+      TELEGRAM_DIGEST_HOUR: ${TELEGRAM_DIGEST_HOUR:-6}
+      TELEGRAM_DIGEST_MINUTE: ${TELEGRAM_DIGEST_MINUTE:-0}
     depends_on:
       postgres:
         condition: service_healthy
