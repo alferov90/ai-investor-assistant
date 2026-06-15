@@ -2,8 +2,16 @@ if (!requireAuth()) throw new Error("redirecting");
 renderNav("/watchlist");
 
 const modal = document.getElementById("modal");
-document.getElementById("btn-add").onclick = () => { modal.classList.remove("hidden"); modal.classList.add("flex"); };
-document.getElementById("cancel").onclick = () => { modal.classList.add("hidden"); modal.classList.remove("flex"); };
+const listEl = document.getElementById("list");
+
+document.getElementById("btn-add").onclick = () => {
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+};
+document.getElementById("cancel").onclick = () => {
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+};
 
 document.getElementById("form").onsubmit = async (e) => {
   e.preventDefault();
@@ -29,29 +37,44 @@ document.getElementById("form").onsubmit = async (e) => {
 
 async function load() {
   const items = await apiFetch("/api/watchlist");
-  const el = document.getElementById("list");
   if (!items.length) {
-    el.innerHTML = `<p class="text-slate-500 text-sm">Watchlist пуст. Добавьте тикер.</p>`;
+    listEl.innerHTML = `<p class="text-slate-500 text-sm">Watchlist пуст. Добавьте тикер.</p>`;
     return;
   }
-  el.innerHTML = items.map((i) => `
-    <div class="glass-card glass-card-padded flex justify-between items-center gap-4">
-      <div>
+
+  listEl.innerHTML = items
+    .map(
+      (i) => `
+    <div class="glass-card glass-card-padded card-with-sparkline">
+      <div class="card-body">
         <p class="font-display font-semibold text-lg">${i.ticker}</p>
         ${i.notes ? `<p class="text-sm" style="color: var(--text-muted);">${i.notes}</p>` : ""}
-        ${i.current_price != null ? `<p class="text-sm mt-1">${formatMoney(i.current_price)} <span class="${pnlClass(i.change_percent)}">${formatPercent(i.change_percent || 0)}</span></p>` : ""}
+        ${
+          i.current_price != null
+            ? `<p class="text-sm mt-1 font-medium">${formatMoney(i.current_price)} <span class="${pnlClass(i.change_percent)}">${formatPercent(i.change_percent || 0)}</span></p>`
+            : `<p class="text-sm mt-1" style="color: var(--text-muted);">Загрузка цены...</p>`
+        }
       </div>
-      <div class="flex gap-2">
+      <div class="sparkline-wrap">
+        <canvas data-sparkline="${i.ticker}" aria-hidden="true"></canvas>
+      </div>
+      <div class="card-actions">
         <a href="/analysis?ticker=${i.ticker}" class="link-accent text-sm">Анализ</a>
         <button data-id="${i.id}" class="delete-btn text-negative text-sm">Удалить</button>
       </div>
     </div>
-  `).join("");
-  el.querySelectorAll(".delete-btn").forEach((btn) => {
+  `
+    )
+    .join("");
+
+  listEl.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.onclick = async () => {
       await apiFetch(`/api/watchlist/${btn.dataset.id}`, { method: "DELETE" });
       load();
     };
   });
+
+  loadSparklines(listEl, items.map((i) => i.ticker), "1mo");
 }
+
 load().catch(console.error);

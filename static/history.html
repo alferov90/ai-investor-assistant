@@ -19,6 +19,12 @@
     <main class="app-main">
       <h1 class="page-title mb-2">История AI-анализов</h1>
       <p class="page-subtitle mb-8">Все прошлые анализы с рейтингами и выводами</p>
+      <div id="rating-chart-section" class="hidden glass-card glass-card-padded mb-6">
+        <h2 class="chart-title mb-4">Динамика рейтингов</h2>
+        <div class="chart-wrap">
+          <canvas id="rating-timeline"></canvas>
+        </div>
+      </div>
       <div class="flex flex-col sm:flex-row gap-3 mb-6">
         <input type="text" id="filter" placeholder="Фильтр: AAPL" class="input-field uppercase flex-1">
         <button id="btn-filter" class="btn btn-primary btn-sm">Найти</button>
@@ -27,8 +33,10 @@
       <div id="detail" class="hidden mt-8 glass-card glass-card-padded"></div>
     </main>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
+  <script src="/static/js/charts.js?v=1"></script>
   <script src="/static/js/history.js"></script>
   <script>injectLogo("app-logo"); renderNav("/history");</script>
 </body>

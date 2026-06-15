@@ -2,12 +2,14 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any
 
+from datetime import datetime, timezone
+
 import httpx
 from fastapi import HTTPException, status
 
 from app.config import settings
 from app.redis_client import cache_get, cache_set
-from app.schemas import CompanyProfile, StockDetail, StockQuote
+from app.schemas import CompanyProfile, StockDetail, StockHistory, StockQuote
 
 logger = logging.getLogger(__name__)
 TWELVE_DATA_TIMEOUT_SECONDS = 10
@@ -214,6 +216,159 @@ def _fetch_finnhub(symbol: str) -> dict[str, Any]:
     }
 
 
+_HISTORY_RANGES = frozenset({"1mo", "3mo", "6mo", "1y"})
+_HISTORY_DAYS = {"1mo": 22, "3mo": 66, "6mo": 132, "1y": 252}
+
+
+def _fetch_yahoo_history(symbol: str, range_: str) -> tuple[list[dict], str]:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    params = {"interval": "1d", "range": range_, "includePrePost": "false"}
+
+    with _httpx_client() as client:
+        response = client.get(url, params=params)
+        response.raise_for_status()
+        payload = response.json()
+
+    results = payload.get("chart", {}).get("result") or []
+    if not results:
+        raise ValueError(f"No Yahoo history for {symbol}")
+
+    meta = results[0].get("meta") or {}
+    currency = str(meta.get("currency") or "USD")
+    timestamps = results[0].get("timestamp") or []
+    quotes = (results[0].get("indicators") or {}).get("quote") or [{}]
+    closes = quotes[0].get("close") or []
+    volumes = quotes[0].get("volume") or []
+
+    points: list[dict] = []
+    for ts, close, vol in zip(timestamps, closes, volumes):
+        price = _safe_float(close)
+        if price is None:
+            continue
+        dt = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        volume = _safe_float(vol)
+        points.append({"date": dt, "close": round(price, 4), "volume": volume})
+
+    if len(points) < 2:
+        raise ValueError(f"Insufficient Yahoo history for {symbol}")
+    return points, currency
+
+
+def _fetch_stooq_history(symbol: str, range_: str) -> tuple[list[dict], str]:
+    stooq_symbol = f"{symbol.lower()}.us"
+    max_rows = _HISTORY_DAYS.get(range_, 66) + 5
+
+    with _httpx_client() as client:
+        response = client.get(
+            "https://stooq.com/q/d/l/",
+            params={"s": stooq_symbol, "i": "d"},
+        )
+        response.raise_for_status()
+        lines = [line.strip() for line in response.text.strip().splitlines() if line.strip()]
+
+    if len(lines) < 3:
+        raise ValueError(f"No Stooq history for {symbol}")
+
+    rows = lines[-max_rows:]
+    points: list[dict] = []
+    for row in rows[1:] if rows[0].lower().startswith("date") else rows:
+        parts = row.split(",")
+        if len(parts) < 6:
+            continue
+        close = _safe_float(parts[4])
+        if close is None:
+            continue
+        vol = _safe_float(parts[5]) if len(parts) > 5 else None
+        points.append({"date": parts[0], "close": round(close, 4), "volume": vol})
+
+    if len(points) < 2:
+        raise ValueError(f"Insufficient Stooq history for {symbol}")
+    return points, "USD"
+
+
+def _fetch_twelve_data_history(symbol: str, range_: str) -> tuple[list[dict], str]:
+    token = settings.twelve_data_api_key
+    if not token:
+        raise ValueError("Twelve Data API key not configured")
+
+    outputsize = _HISTORY_DAYS.get(range_, 66)
+    response = httpx.get(
+        "https://api.twelvedata.com/time_series",
+        params={
+            "symbol": symbol,
+            "interval": "1day",
+            "outputsize": outputsize,
+            "apikey": token,
+        },
+        timeout=TWELVE_DATA_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if data.get("status") == "error":
+        raise ValueError(data.get("message") or "Twelve Data history error")
+
+    values = data.get("values") or []
+    if len(values) < 2:
+        raise ValueError(f"Insufficient Twelve Data history for {symbol}")
+
+    points = []
+    for row in reversed(values):
+        close = _safe_float(row.get("close"))
+        if close is None:
+            continue
+        vol = _safe_float(row.get("volume"))
+        points.append({"date": row.get("datetime", "")[:10], "close": round(close, 4), "volume": vol})
+
+    currency = str(data.get("meta", {}).get("currency") or "USD")
+    return points, currency
+
+
+def fetch_price_history(symbol: str, range_: str = "3mo") -> StockHistory:
+    symbol = symbol.strip().upper()
+    if range_ not in _HISTORY_RANGES:
+        range_ = "3mo"
+
+    cache_key = f"history:{symbol}:{range_}"
+    cached = cache_get(cache_key)
+    if cached:
+        return StockHistory(**cached)
+
+    providers: list[tuple[str, Any]] = []
+    if settings.twelve_data_api_key:
+        providers.append(("twelve_data", _fetch_twelve_data_history))
+    providers.append(("stooq", _fetch_stooq_history))
+    providers.append(("yahoo", _fetch_yahoo_history))
+
+    last_exc: Exception | None = None
+    for name, fetcher in providers:
+        try:
+            points, currency = _run_with_timeout(fetcher, symbol, range_)
+            first = points[0]["close"]
+            last = points[-1]["close"]
+            change_pct = round((last - first) / first * 100, 2) if first else 0.0
+            result = StockHistory(
+                ticker=symbol,
+                range=range_,
+                currency=currency,
+                change_percent=change_pct,
+                points=points,
+                source=name,
+            )
+            cache_set(cache_key, result.model_dump(), 600)
+            logger.info("Price history for %s (%s) via %s", symbol, range_, name)
+            return result
+        except FuturesTimeoutError:
+            logger.warning("%s history timeout for %s", name, symbol)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("%s history failed for %s: %s", name, symbol, exc)
+
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=f"Unable to fetch price history for {symbol}",
+    ) from last_exc
+
+
 def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
     """Finnhub fundamentals → Twelve Data → Yahoo Chart → Stooq."""
     symbol = symbol.strip().upper()
@@ -361,6 +516,9 @@ class StockService:
             except HTTPException:
                 continue
         return result
+
+    def get_history(self, ticker: str, range_: str = "3mo") -> StockHistory:
+        return fetch_price_history(ticker, range_)
 
     @staticmethod
     def _resolve_price(info: dict, history: list[float]) -> float | None:

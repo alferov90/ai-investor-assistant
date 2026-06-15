@@ -50,6 +50,21 @@
         </div>
       </div>
 
+      <div id="charts-row" class="hidden chart-grid-2">
+        <div class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-4">Распределение портфеля</h2>
+          <div class="chart-wrap chart-wrap-sm">
+            <canvas id="allocation-chart"></canvas>
+          </div>
+        </div>
+        <div class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-4">P/L по позициям</h2>
+          <div class="chart-wrap chart-wrap-sm">
+            <canvas id="pnl-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card glass-card-padded mb-8">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h2 class="font-display font-bold text-lg">Telegram Bot</h2>
@@ -75,9 +90,11 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
-  <script src="/static/js/dashboard.js?v=4"></script>
+  <script src="/static/js/charts.js?v=1"></script>
+  <script src="/static/js/dashboard.js?v=6"></script>
   <script>injectLogo("app-logo"); renderNav("/dashboard");</script>
 </body>
 </html>

@@ -34,6 +34,16 @@ async def get_quote(
     return await run_in_threadpool(stock_service.get_quote, ticker)
 
 
+@router.get("/{ticker}/history", response_model=schemas.StockHistory)
+async def get_history(
+    ticker: str,
+    range: str = "3mo",
+    _: User = Depends(get_current_user),
+):
+    logger.info("GET history %s range=%s", ticker.upper(), range)
+    return await run_in_threadpool(stock_service.get_history, ticker, range)
+
+
 @router.get("/{ticker}/analysis", response_model=schemas.StockAnalysis)
 async def get_analysis(
     ticker: str,

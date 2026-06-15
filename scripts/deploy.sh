@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Deploy ai-investor-assistant to VPS via SSH.
 # Config: copy .deploy.env.example → .deploy.env (local only, not committed).
+#
+# Usage:
+#   ./scripts/deploy.sh              # git pull on server + rebuild
+#   ./scripts/deploy.sh --push       # push local main, then deploy
+#   ./scripts/deploy.sh --local      # rsync local files (skip git pull) + rebuild
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -36,15 +41,33 @@ SSH=(ssh "${SSH_OPTS[@]}" "$REMOTE")
 
 echo "→ Deploy to $REMOTE ($DEPLOY_PATH, branch $DEPLOY_BRANCH)"
 
+SKIP_GIT_PULL=0
+
 if [[ "${1:-}" == "--push" ]]; then
   echo "→ git push origin $DEPLOY_BRANCH"
   git -C "$ROOT" push origin "$DEPLOY_BRANCH"
+  shift
+fi
+
+if [[ "${1:-}" == "--local" ]]; then
+  echo "→ rsync local project to $REMOTE:$DEPLOY_PATH"
+  rsync -avz --delete \
+    --exclude '.git/' \
+    --exclude '.env' \
+    --exclude '.deploy.env' \
+    --exclude '__pycache__/' \
+    --exclude '.venv/' \
+    --exclude 'node_modules/' \
+    "$ROOT/" "$REMOTE:$DEPLOY_PATH/"
+  SKIP_GIT_PULL=1
+  shift
 fi
 
 "${SSH[@]}" \
   DEPLOY_PATH="$DEPLOY_PATH" \
   DEPLOY_REPO="$DEPLOY_REPO" \
   DEPLOY_BRANCH="$DEPLOY_BRANCH" \
+  SKIP_GIT_PULL="$SKIP_GIT_PULL" \
   bash -s <<'REMOTE'
 set -euo pipefail
 
@@ -55,11 +78,15 @@ if [[ ! -d "$DEPLOY_PATH/.git" ]]; then
 fi
 
 cd "$DEPLOY_PATH"
-echo "→ git remote & pull"
-git remote set-url origin "$DEPLOY_REPO"
-git fetch origin "$DEPLOY_BRANCH"
-git checkout "$DEPLOY_BRANCH"
-git pull origin "$DEPLOY_BRANCH" --rebase
+if [[ "${SKIP_GIT_PULL}" != "1" ]]; then
+  echo "→ git remote & pull"
+  git remote set-url origin "$DEPLOY_REPO"
+  git fetch origin "$DEPLOY_BRANCH"
+  git checkout "$DEPLOY_BRANCH"
+  git pull origin "$DEPLOY_BRANCH" --rebase
+else
+  echo "→ skip git pull (local rsync deploy)"
+fi
 
 echo "→ docker compose build & up"
 docker compose build --no-cache api

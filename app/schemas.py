@@ -119,6 +119,21 @@ class StockAnalysis(BaseModel):
     ai_powered: bool = True
 
 
+class PriceHistoryPoint(BaseModel):
+    date: str
+    close: float
+    volume: float | None = None
+
+
+class StockHistory(BaseModel):
+    ticker: str
+    range: str
+    currency: str = "USD"
+    change_percent: float
+    points: list[PriceHistoryPoint]
+    source: str = "yahoo"
+
+
 class DashboardStats(BaseModel):
     holdings_count: int
     total_cost: float
@@ -126,6 +141,7 @@ class DashboardStats(BaseModel):
     total_pnl: float
     total_pnl_percent: float
     top_holdings: list[dict]
+    chart_holdings: list[dict] = []
 
 
 class WatchlistCreate(BaseModel):

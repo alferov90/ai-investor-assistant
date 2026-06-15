@@ -82,6 +82,7 @@ def dashboard(
             total_pnl=0,
             total_pnl_percent=0,
             top_holdings=[],
+            chart_holdings=[],
         )
 
     tickers = [h.ticker for h in holdings]
@@ -121,4 +122,5 @@ def dashboard(
         total_pnl=round(total_pnl, 2),
         total_pnl_percent=round(total_pnl_percent, 2),
         top_holdings=enriched[:5],
+        chart_holdings=enriched,
     )

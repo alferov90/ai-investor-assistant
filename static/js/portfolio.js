@@ -4,6 +4,7 @@ renderNav("/portfolio");
 const modal = document.getElementById("modal");
 const form = document.getElementById("holding-form");
 const tickerInput = document.getElementById("ticker");
+const container = document.getElementById("holdings-list");
 
 function openModal(holding = null) {
   document.getElementById("modal-title").textContent = holding ? "Редактировать позицию" : "Добавить тикер";
@@ -29,31 +30,46 @@ document.getElementById("btn-add").onclick = () => openModal();
 document.getElementById("btn-cancel").onclick = closeModal;
 
 async function loadHoldings() {
-  const holdings = await apiFetch("/api/portfolio");
-  const container = document.getElementById("holdings-list");
+  const [holdings, stats] = await Promise.all([
+    apiFetch("/api/portfolio"),
+    apiFetch("/api/portfolio/dashboard").catch(() => ({ chart_holdings: [] })),
+  ]);
 
   if (!holdings.length) {
     container.innerHTML = `<p class="text-slate-500 text-sm">Портфель пуст. Нажмите «Добавить тикер».</p>`;
     return;
   }
 
+  const quoteMap = Object.fromEntries(
+    (stats.chart_holdings || []).map((h) => [h.ticker, h])
+  );
+
   container.innerHTML = holdings
-    .map(
-      (h) => `
-      <div class="glass-card glass-card-padded flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+    .map((h) => {
+      const q = quoteMap[h.ticker];
+      const quoteLine = q
+        ? `<p class="text-sm mt-1">${formatMoney(q.price)} · ${formatMoney(q.value)} · <span class="${pnlClass(q.pnl)}">${formatMoney(q.pnl)} (${formatPercent(q.pnl_percent)})</span></p>`
+        : "";
+
+      return `
+      <div class="glass-card glass-card-padded card-with-sparkline">
+        <div class="card-body">
           <p class="font-display font-semibold text-lg">${h.ticker}</p>
           <p class="text-sm" style="color: var(--text-muted);">${h.shares} шт. × $${Number(h.avg_price).toFixed(2)}</p>
+          ${quoteLine}
           ${h.notes ? `<p class="text-sm mt-1" style="color: var(--text-muted);">${h.notes}</p>` : ""}
         </div>
-        <div class="flex gap-2 flex-wrap">
+        <div class="sparkline-wrap">
+          <canvas data-sparkline="${h.ticker}" aria-hidden="true"></canvas>
+        </div>
+        <div class="card-actions flex-wrap">
           <a href="/analysis?ticker=${h.ticker}" class="btn btn-ghost btn-sm">Анализ</a>
           <button data-edit='${JSON.stringify(h)}' class="btn btn-secondary btn-sm">Изменить</button>
           <button data-delete="${h.id}" class="btn btn-secondary btn-sm text-negative">Удалить</button>
         </div>
       </div>
-    `
-    )
+    `;
+    })
     .join("");
 
   container.querySelectorAll("[data-edit]").forEach((btn) => {
@@ -67,6 +83,12 @@ async function loadHoldings() {
       loadHoldings();
     };
   });
+
+  loadSparklines(
+    container,
+    holdings.map((h) => h.ticker),
+    "1mo"
+  );
 }
 
 form.addEventListener("submit", async (e) => {
@@ -105,7 +127,5 @@ form.addEventListener("submit", async (e) => {
 
 loadHoldings().catch((err) => {
   console.error(err);
-  document.getElementById("holdings-list").innerHTML = `
-    <p class="text-red-400 text-sm">${err.message}</p>
-  `;
+  container.innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
 });

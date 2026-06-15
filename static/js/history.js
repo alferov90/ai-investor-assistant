@@ -9,10 +9,23 @@ async function load(ticker) {
   const url = ticker ? `/api/analyses/history?ticker=${encodeURIComponent(ticker)}` : "/api/analyses/history";
   const items = await apiFetch(url);
   const el = document.getElementById("list");
+  const chartSection = document.getElementById("rating-chart-section");
+
   if (!items.length) {
     el.innerHTML = `<p class="text-slate-500">История пуста. Запустите анализ на странице «Анализ».</p>`;
+    chartSection.classList.add("hidden");
+    destroyChart("rating-timeline");
     return;
   }
+
+  if (items.length >= 2) {
+    chartSection.classList.remove("hidden");
+    createRatingTimeline(document.getElementById("rating-timeline"), items);
+  } else {
+    chartSection.classList.add("hidden");
+    destroyChart("rating-timeline");
+  }
+
   el.innerHTML = items.map((r) => `
     <div class="glass-card glass-card-padded flex justify-between items-center cursor-pointer record hover:border-teal-500/30" data-id="${r.id}">
       <div>

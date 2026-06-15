@@ -8,6 +8,14 @@ function initAnalysisPage() {
     return;
   }
 
+  document.querySelectorAll(".chart-range-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".chart-range-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (currentTicker) loadPriceChart(currentTicker, btn.dataset.range);
+    });
+  });
+
   const params = new URLSearchParams(window.location.search);
   const initialTicker = params.get("ticker");
   if (initialTicker) {
@@ -21,6 +29,8 @@ function initAnalysisPage() {
     if (ticker) analyze(ticker);
   });
 }
+
+let currentTicker = null;
 
 document.addEventListener("DOMContentLoaded", initAnalysisPage);
 
@@ -70,7 +80,9 @@ function renderStockMeta(stock) {
 function renderAnalysis(analysis) {
   const ratingEl = document.getElementById("rating");
   ratingEl.textContent = analysis.rating;
-  ratingEl.className = `text-2xl font-bold ${ratingColor(analysis.rating)}`;
+  ratingEl.className = `font-display text-2xl font-bold ${ratingColor(analysis.rating)}`;
+
+  createRatingGauge(document.getElementById("rating-gauge"), analysis.rating);
 
   renderList("strengths", analysis.strengths);
   renderList("weaknesses", analysis.weaknesses);
@@ -89,6 +101,24 @@ function renderAnalysis(analysis) {
   document.getElementById("analysis-section").classList.remove("hidden");
 }
 
+async function loadPriceChart(ticker, range) {
+  const changeEl = document.getElementById("chart-change");
+  try {
+    const history = await apiFetch(
+      `/api/stocks/${encodeURIComponent(ticker)}/history?range=${encodeURIComponent(range)}`,
+      { timeoutMs: 30000 }
+    );
+    const sign = history.change_percent >= 0 ? "+" : "";
+    changeEl.textContent = `${sign}${history.change_percent.toFixed(2)}% за период`;
+    changeEl.className = `chart-change ${history.change_percent >= 0 ? "positive" : "negative"}`;
+    createPriceLineChart(document.getElementById("price-chart"), history);
+  } catch {
+    changeEl.textContent = "График недоступен";
+    changeEl.className = "chart-change";
+    destroyChart("price");
+  }
+}
+
 async function analyze(ticker) {
   if (!getToken()) {
     window.location.href =
@@ -100,10 +130,15 @@ async function analyze(ticker) {
   const loadingEl = document.getElementById("loading");
   const resultEl = document.getElementById("result");
   const analysisSection = document.getElementById("analysis-section");
+  const chartsSection = document.getElementById("charts-section");
 
+  currentTicker = ticker;
   errorEl.classList.add("hidden");
   resultEl.classList.add("hidden");
   analysisSection.classList.add("hidden");
+  chartsSection.classList.add("hidden");
+  destroyChart("price");
+  destroyChart("rating-gauge");
   loadingEl.classList.remove("hidden");
   loadingEl.textContent = "Загрузка данных акции...";
 
@@ -111,6 +146,11 @@ async function analyze(ticker) {
     const stock = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}`, { timeoutMs: 30000 });
     renderStockMeta(stock);
     resultEl.classList.remove("hidden");
+    chartsSection.classList.remove("hidden");
+
+    const activeRange =
+      document.querySelector(".chart-range-tab.active")?.dataset.range || "3mo";
+    loadPriceChart(ticker, activeRange);
 
     loadingEl.textContent = "AI-анализ (до 60 сек)...";
     const analysis = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}/analysis`, {

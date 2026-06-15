@@ -76,6 +76,22 @@ async function loadDashboard() {
 
   document.getElementById("holdings-count").textContent = stats.holdings_count;
 
+  const chartsRow = document.getElementById("charts-row");
+  const chartHoldings = stats.chart_holdings?.length
+    ? stats.chart_holdings
+    : stats.top_holdings;
+
+  if (chartHoldings.length) {
+    chartsRow.classList.remove("hidden");
+    createAllocationDoughnut(
+      document.getElementById("allocation-chart"),
+      chartHoldings
+    );
+    createPnlBarChart(document.getElementById("pnl-chart"), chartHoldings);
+  } else {
+    chartsRow.classList.add("hidden");
+  }
+
   const container = document.getElementById("top-holdings");
   if (!stats.top_holdings.length) {
     container.innerHTML = `
