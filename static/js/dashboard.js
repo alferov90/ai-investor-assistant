@@ -32,28 +32,26 @@ async function updateTelegramUI() {
 
   actions.classList.remove("hidden");
   const connected = user.telegram_connected;
+  const telegramLink = document.getElementById("telegram-link");
 
   if (connected) {
     const bot = status.bot_username ? `@${status.bot_username}` : "Telegram";
     setTelegramStatus(`Подключено (${bot})`, "bg-emerald-500/20 text-emerald-400");
-    document.getElementById("telegram-link").textContent = "Открыть бота";
+    telegramLink.textContent = "Открыть бота";
+    telegramLink.href = `https://t.me/${status.bot_username}`;
     document.getElementById("btn-telegram-disconnect").classList.remove("hidden");
   } else {
     setTelegramStatus("Не подключено", "bg-slate-800 text-slate-400");
-    document.getElementById("telegram-link").textContent = "Подключить Telegram";
+    telegramLink.textContent = "Подключить Telegram";
     document.getElementById("btn-telegram-disconnect").classList.add("hidden");
-  }
-
-  document.getElementById("telegram-link").onclick = async (e) => {
-    e.preventDefault();
     try {
       const res = await apiFetch("/api/telegram/link", { method: "POST" });
-      errorEl.textContent = "Нажмите Start в Telegram";
-      window.location.assign(res.link);
+      telegramLink.href = res.link;
     } catch (err) {
+      telegramLink.href = "#";
       errorEl.textContent = err.message;
     }
-  };
+  }
 
   document.getElementById("btn-telegram-disconnect").onclick = async () => {
     await apiFetch("/api/telegram/disconnect", { method: "DELETE" });
