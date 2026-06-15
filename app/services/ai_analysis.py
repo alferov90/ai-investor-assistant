@@ -22,7 +22,13 @@ Respond ONLY with valid JSON in Russian language using this schema:
   "investment_conclusion": "string",
   "rating": 1-10 integer
 }
-Be factual, concise, and balanced. Rating 1 = strong sell, 10 = strong buy."""
+Be factual, concise, and balanced. Rating 1 = strong sell, 10 = strong buy.
+The investment_conclusion must be 3-5 sentences and include:
+1) the main investment thesis,
+2) the most important supporting factor,
+3) the principal risk,
+4) an actionable stance: avoid, watch, cautiously accumulate, or hold.
+Never claim certainty, invent missing data, or mention API keys/data-provider setup."""
 
 
 class AIAnalysisService:
@@ -147,10 +153,35 @@ class AIAnalysisService:
             elif f.pe_ratio > 40:
                 rating = 4
 
+        growth = f.revenue_growth
+        if rating >= 7:
+            stance = "Акцию можно рассматривать для осторожного набора позиции частями"
+        elif rating <= 4:
+            stance = "С покупкой лучше не спешить и дождаться улучшения показателей или оценки"
+        else:
+            stance = "Разумная стратегия — наблюдать за акцией и входить только при подходящей цене"
+
+        evidence: list[str] = []
+        if growth is not None:
+            direction = "растёт" if growth > 0 else "снижается"
+            evidence.append(f"выручка {direction} на {abs(growth):.1f}% год к году")
+        if f.pe_ratio is not None:
+            evidence.append(f"P/E составляет {f.pe_ratio:.1f}")
+        if f.eps is not None:
+            evidence.append(f"EPS составляет ${f.eps:.2f}")
+
+        evidence_text = (
+            "Ключевые доступные показатели: " + ", ".join(evidence) + "."
+            if evidence
+            else "Доступных фундаментальных показателей недостаточно для уверенной оценки."
+        )
+        main_risk = risks[0].rstrip(".")
         conclusion = (
-            f"{profile.name} ({profile.ticker}) торгуется по ${f.current_price:.2f}. "
-            f"Базовый анализ на основе Yahoo Finance. "
-            f"Для GPT-анализа добавьте OPENAI_API_KEY на сервере."
+            f"{profile.name} ({profile.ticker}) торгуется по ${f.current_price:.2f} "
+            f"и получает базовую оценку {rating}/10. "
+            f"{evidence_text} "
+            f"Главный риск: {main_risk.lower()}. "
+            f"{stance}; перед решением стоит проверить свежую отчётность и допустимый уровень риска."
         )
 
         return StockAnalysis(
