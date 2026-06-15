@@ -12,7 +12,16 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     stock_cache_ttl_seconds: int = 300
+<<<<<<< HEAD
     twelve_data_api_key: str = ""
+=======
+    yahoo_proxy_url: str = ""
+    yahoo_fetch_timeout_seconds: int = 10
+    finnhub_api_key: str = ""
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""
+    telegram_proxy_url: str = ""
+>>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
 
 
 settings = Settings()

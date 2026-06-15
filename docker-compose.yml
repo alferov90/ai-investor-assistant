@@ -43,7 +43,16 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       STOCK_CACHE_TTL_SECONDS: ${STOCK_CACHE_TTL_SECONDS:-300}
+<<<<<<< HEAD
       TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
+=======
+      YAHOO_PROXY_URL: ${YAHOO_PROXY_URL:-}
+      YAHOO_FETCH_TIMEOUT_SECONDS: ${YAHOO_FETCH_TIMEOUT_SECONDS:-10}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+>>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
     depends_on:
       postgres:
         condition: service_healthy

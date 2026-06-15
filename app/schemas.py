@@ -23,6 +23,17 @@ class UserRead(BaseModel):
     name: str
     is_active: bool
     created_at: datetime
+    telegram_connected: bool = False
+
+
+class TelegramStatus(BaseModel):
+    configured: bool
+    connected: bool
+    bot_username: str | None = None
+
+
+class TelegramLink(BaseModel):
+    link: str
 
 
 class Token(BaseModel):
@@ -86,14 +97,26 @@ class StockQuote(BaseModel):
     industry: str | None = None
 
 
+class CompanyProfile(BaseModel):
+    ticker: str
+    name: str
+    description: str
+    sector: str | None = None
+    industry: str | None = None
+    financials: StockDetail
+
+
 class StockAnalysis(BaseModel):
     ticker: str
-    quote: StockQuote
-    summary: str
+    name: str
+    current_price: float
+    currency: str = "USD"
     strengths: list[str]
+    weaknesses: list[str]
     risks: list[str]
-    recommendation: str
-    ai_powered: bool
+    investment_conclusion: str
+    rating: int = Field(ge=1, le=10)
+    ai_powered: bool = True
 
 
 class DashboardStats(BaseModel):
@@ -103,3 +126,84 @@ class DashboardStats(BaseModel):
     total_pnl: float
     total_pnl_percent: float
     top_holdings: list[dict]
+
+
+class WatchlistCreate(BaseModel):
+    ticker: str = Field(min_length=1, max_length=16)
+    notes: str = Field(default="", max_length=500)
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value: str) -> str:
+        return value.strip().upper()
+
+
+class WatchlistRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticker: str
+    notes: str
+    created_at: datetime
+    current_price: float | None = None
+    change_percent: float | None = None
+
+
+class AnalysisRecordRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticker: str
+    name: str
+    current_price: Decimal
+    currency: str
+    rating: int
+    strengths: list[str]
+    weaknesses: list[str]
+    risks: list[str]
+    investment_conclusion: str
+    ai_powered: bool
+    created_at: datetime
+
+
+class AlertCreate(BaseModel):
+    ticker: str = Field(min_length=1, max_length=16)
+    condition_type: str
+    target_value: Decimal = Field(gt=0)
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("condition_type")
+    @classmethod
+    def validate_condition(cls, value: str) -> str:
+        allowed = {"above", "below", "change_up", "change_down"}
+        if value not in allowed:
+            raise ValueError(f"condition_type must be one of {allowed}")
+        return value
+
+
+class AlertRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticker: str
+    condition_type: str
+    target_value: Decimal
+    is_active: bool
+    last_triggered_at: datetime | None
+    created_at: datetime
+
+
+class PortfolioAnalysis(BaseModel):
+    summary: str
+    strengths: list[str]
+    weaknesses: list[str]
+    risks: list[str]
+    recommendation: str
+    rating: int = Field(ge=1, le=10)
+    ai_powered: bool = True
+    holdings_count: int
+    tickers: list[str]

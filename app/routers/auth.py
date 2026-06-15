@@ -41,4 +41,6 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserRead)
 def read_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    return schemas.UserRead.model_validate(current_user).model_copy(
+        update={"telegram_connected": current_user.telegram_chat_id is not None}
+    )

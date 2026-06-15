@@ -1,4 +1,65 @@
 if (!requireAuth()) throw new Error("redirecting");
+renderNav("/dashboard");
+
+function setTelegramStatus(text, cls) {
+  const el = document.getElementById("telegram-status");
+  el.textContent = text;
+  el.className = `text-xs px-2 py-1 rounded-full ${cls}`;
+}
+
+async function updateTelegramUI() {
+  const actions = document.getElementById("telegram-actions");
+  const errorEl = document.getElementById("telegram-error");
+  errorEl.textContent = "";
+
+  let user, status;
+  try {
+    [user, status] = await Promise.all([
+      apiFetch("/api/auth/me"),
+      apiFetch("/api/telegram/status").catch(() => null),
+    ]);
+  } catch {
+    setTelegramStatus("Ошибка", "bg-slate-800 text-slate-400");
+    return;
+  }
+
+  if (!status?.configured) {
+    setTelegramStatus("Не настроен", "bg-amber-500/20 text-amber-400");
+    actions.classList.add("hidden");
+    errorEl.textContent = "Добавьте TELEGRAM_BOT_TOKEN в .env на сервере.";
+    return;
+  }
+
+  actions.classList.remove("hidden");
+  const connected = user.telegram_connected;
+
+  if (connected) {
+    const bot = status.bot_username ? `@${status.bot_username}` : "Telegram";
+    setTelegramStatus(`Подключено (${bot})`, "bg-emerald-500/20 text-emerald-400");
+    document.getElementById("telegram-link").textContent = "Открыть бота";
+    document.getElementById("btn-telegram-disconnect").classList.remove("hidden");
+  } else {
+    setTelegramStatus("Не подключено", "bg-slate-800 text-slate-400");
+    document.getElementById("telegram-link").textContent = "Подключить Telegram";
+    document.getElementById("btn-telegram-disconnect").classList.add("hidden");
+  }
+
+  document.getElementById("telegram-link").onclick = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await apiFetch("/api/telegram/link", { method: "POST" });
+      window.open(res.link, "_blank");
+      errorEl.textContent = "Нажмите Start в Telegram";
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  };
+
+  document.getElementById("btn-telegram-disconnect").onclick = async () => {
+    await apiFetch("/api/telegram/disconnect", { method: "DELETE" });
+    updateTelegramUI();
+  };
+}
 
 async function loadDashboard() {
   const [user, stats] = await Promise.all([
@@ -54,3 +115,29 @@ loadDashboard().catch((err) => {
     <p class="text-red-400 text-sm">${err.message}</p>
   `;
 });
+updateTelegramUI();
+
+document.getElementById("btn-portfolio-ai").onclick = async () => {
+  const el = document.getElementById("portfolio-ai-result");
+  el.classList.remove("hidden");
+  el.innerHTML = `<p class="text-slate-400">AI анализирует портфель...</p>`;
+  try {
+    const data = await apiFetch("/api/portfolio/ai-analysis", { method: "POST", timeoutMs: 90000 });
+    el.innerHTML = `
+      <div class="flex items-center gap-2 mb-3">
+        <h2 class="font-semibold text-lg">AI-анализ портфеля</h2>
+        <span class="text-xs px-2 py-0.5 rounded-full ${data.ai_powered ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-300"}">${data.ai_powered ? "GPT" : "Базовый"}</span>
+        <span class="text-amber-400 ml-auto">Рейтинг ${data.rating}/10</span>
+      </div>
+      <p class="text-slate-300 mb-4">${data.summary}</p>
+      <p class="text-emerald-400 font-medium mb-4">${data.recommendation}</p>
+      <div class="grid md:grid-cols-3 gap-4 text-sm">
+        <div><h3 class="text-emerald-400 mb-1">Сильные</h3><ul>${data.strengths.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
+        <div><h3 class="text-amber-400 mb-1">Слабые</h3><ul>${data.weaknesses.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
+        <div><h3 class="text-red-400 mb-1">Риски</h3><ul>${data.risks.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
+      </div>
+    `;
+  } catch (err) {
+    el.innerHTML = `<p class="text-red-400">${err.message}</p>`;
+  }
+};

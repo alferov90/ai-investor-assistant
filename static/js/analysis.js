@@ -1,75 +1,138 @@
-if (!requireAuth()) throw new Error("redirecting");
+function initAnalysisPage() {
+  renderNav("/analysis");
+  if (!getToken()) {
+    const errorEl = document.getElementById("error");
+    errorEl.textContent = "Войдите в аккаунт, чтобы запускать AI-анализ.";
+    errorEl.classList.remove("hidden");
+    document.getElementById("login-hint").classList.remove("hidden");
+    return;
+  }
 
-const params = new URLSearchParams(window.location.search);
-const initialTicker = params.get("ticker");
-if (initialTicker) {
-  document.getElementById("ticker").value = initialTicker;
-  analyze(initialTicker);
+  const params = new URLSearchParams(window.location.search);
+  const initialTicker = params.get("ticker");
+  if (initialTicker) {
+    document.getElementById("ticker").value = initialTicker;
+    analyze(initialTicker);
+  }
+
+  document.getElementById("search-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const ticker = document.getElementById("ticker").value.trim().toUpperCase();
+    if (ticker) analyze(ticker);
+  });
 }
 
-document.getElementById("search-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const ticker = document.getElementById("ticker").value.trim().toUpperCase();
-  if (ticker) analyze(ticker);
-});
+document.addEventListener("DOMContentLoaded", initAnalysisPage);
 
 function renderList(id, items) {
-  document.getElementById(id).innerHTML = items
+  const el = document.getElementById(id);
+  if (!items.length) {
+    el.innerHTML = `<li class="text-slate-500">Нет данных</li>`;
+    return;
+  }
+  el.innerHTML = items
     .map((item) => `<li class="flex gap-2"><span class="text-slate-500">•</span>${item}</li>`)
     .join("");
 }
 
+function ratingColor(rating) {
+  if (rating >= 8) return "text-emerald-400";
+  if (rating >= 5) return "text-amber-400";
+  return "text-red-400";
+}
+
+function renderStockMeta(stock) {
+  document.getElementById("stock-name").textContent = stock.name;
+  document.getElementById("stock-ticker").textContent = stock.ticker;
+  document.getElementById("stock-price").textContent = formatMoney(
+    stock.current_price,
+    stock.currency
+  );
+
+  const meta = [
+    ["P/E", stock.pe_ratio?.toFixed(2) ?? "—"],
+    ["EPS", stock.eps?.toFixed(2) ?? "—"],
+    ["Market Cap", stock.market_cap ? formatCompact(stock.market_cap) : "—"],
+    ["Rev. Growth", stock.revenue_growth != null ? formatGrowth(stock.revenue_growth) : "—"],
+  ];
+  document.getElementById("stock-meta").innerHTML = meta
+    .map(
+      ([label, value]) => `
+      <div class="bg-slate-950 rounded-lg p-3">
+        <p class="text-slate-500 text-xs">${label}</p>
+        <p class="font-medium mt-0.5">${value}</p>
+      </div>
+    `
+    )
+    .join("");
+}
+
+function renderAnalysis(analysis) {
+  const ratingEl = document.getElementById("rating");
+  ratingEl.textContent = analysis.rating;
+  ratingEl.className = `text-2xl font-bold ${ratingColor(analysis.rating)}`;
+
+  renderList("strengths", analysis.strengths);
+  renderList("weaknesses", analysis.weaknesses);
+  renderList("risks", analysis.risks);
+  document.getElementById("investment-conclusion").textContent = analysis.investment_conclusion;
+
+  const badge = document.getElementById("ai-badge");
+  if (analysis.ai_powered) {
+    badge.textContent = "GPT";
+    badge.className = "text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full";
+  } else {
+    badge.textContent = "Базовый";
+    badge.className = "text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full";
+  }
+
+  document.getElementById("analysis-section").classList.remove("hidden");
+}
+
 async function analyze(ticker) {
+  if (!getToken()) {
+    window.location.href =
+      "/login?next=" + encodeURIComponent("/analysis?ticker=" + encodeURIComponent(ticker));
+    return;
+  }
+
   const errorEl = document.getElementById("error");
   const loadingEl = document.getElementById("loading");
   const resultEl = document.getElementById("result");
+  const analysisSection = document.getElementById("analysis-section");
 
   errorEl.classList.add("hidden");
   resultEl.classList.add("hidden");
+  analysisSection.classList.add("hidden");
   loadingEl.classList.remove("hidden");
+  loadingEl.textContent = "Загрузка данных акции...";
 
   try {
-    const data = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}/analysis`);
-    const q = data.quote;
-
-    document.getElementById("stock-name").textContent = q.name;
-    document.getElementById("stock-ticker").textContent = q.ticker;
-    document.getElementById("stock-price").textContent = formatMoney(q.price, q.currency);
-    const changeEl = document.getElementById("stock-change");
-    changeEl.textContent = `${formatMoney(q.change, q.currency)} (${formatPercent(q.change_percent)})`;
-    changeEl.className = `text-sm ${pnlClass(q.change)}`;
-
-    const meta = [
-      ["P/E", q.pe_ratio?.toFixed(2) ?? "—"],
-      ["52w High", q.fifty_two_week_high ? formatMoney(q.fifty_two_week_high, q.currency) : "—"],
-      ["52w Low", q.fifty_two_week_low ? formatMoney(q.fifty_two_week_low, q.currency) : "—"],
-      ["Sector", q.sector ?? "—"],
-    ];
-    document.getElementById("stock-meta").innerHTML = meta
-      .map(
-        ([label, value]) => `
-        <div class="bg-slate-950 rounded-lg p-3">
-          <p class="text-slate-500 text-xs">${label}</p>
-          <p class="font-medium mt-0.5">${value}</p>
-        </div>
-      `
-      )
-      .join("");
-
-    document.getElementById("summary").textContent = data.summary;
-    renderList("strengths", data.strengths);
-    renderList("risks", data.risks);
-    document.getElementById("recommendation").textContent = data.recommendation;
-
-    const badge = document.getElementById("ai-badge");
-    if (data.ai_powered) badge.classList.remove("hidden");
-    else badge.classList.add("hidden");
-
+    const stock = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}`, { timeoutMs: 30000 });
+    renderStockMeta(stock);
     resultEl.classList.remove("hidden");
+
+    loadingEl.textContent = "AI-анализ (до 60 сек)...";
+    const analysis = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}/analysis`, {
+      timeoutMs: 90000,
+    });
+    renderAnalysis(analysis);
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
   } finally {
     loadingEl.classList.add("hidden");
   }
+}
+
+function formatCompact(value) {
+  if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  return `$${value.toFixed(0)}`;
+}
+
+function formatGrowth(value) {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
 }

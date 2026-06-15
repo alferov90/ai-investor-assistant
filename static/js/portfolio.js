@@ -1,4 +1,5 @@
 if (!requireAuth()) throw new Error("redirecting");
+renderNav("/portfolio");
 
 const modal = document.getElementById("modal");
 const form = document.getElementById("holding-form");

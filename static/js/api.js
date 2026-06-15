@@ -34,25 +34,42 @@ async function apiFetch(path, options = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...options, headers });
+  const timeoutMs = options.timeoutMs ?? 90000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (res.status === 401) {
-    clearToken();
-    window.location.href = "/login";
-    throw new Error("Session expired");
+  try {
+    const res = await fetch(path, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (res.status === 401) {
+      clearToken();
+      window.location.href = "/login?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+      throw new Error("Войдите в аккаунт для доступа к анализу");
+    }
+
+    if (res.status === 204) return null;
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detail = data.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((e) => e.msg).join(", ")
+        : detail || `HTTP ${res.status}`;
+      throw new Error(message);
+    }
+    return data;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Превышено время ожидания. Проверьте YAHOO_PROXY_URL на сервере.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (res.status === 204) return null;
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const detail = data.detail;
-    const message = Array.isArray(detail)
-      ? detail.map((e) => e.msg).join(", ")
-      : detail || `HTTP ${res.status}`;
-    throw new Error(message);
-  }
-  return data;
 }
 
 function logout() {

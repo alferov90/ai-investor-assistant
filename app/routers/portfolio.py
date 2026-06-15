@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import User
+from app.services.ai_analysis import ai_analysis_service
 from app.services.stock_service import fetch_quotes
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -56,6 +58,14 @@ def delete_holding(
     if not holding:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found")
     crud.delete_holding(db, holding)
+
+
+@router.post("/ai-analysis", response_model=schemas.PortfolioAnalysis)
+async def portfolio_ai_analysis(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await run_in_threadpool(ai_analysis_service.analyze_portfolio, db, current_user.id)
 
 
 @router.get("/dashboard", response_model=schemas.DashboardStats)

@@ -1,34 +1,46 @@
-from fastapi import APIRouter, Depends
+import logging
 
-from app import schemas
+from fastapi import APIRouter, Depends
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy.orm import Session
+
+from app import crud, schemas
 from app.auth import get_current_user
+from app.database import get_db
 from app.models import User
-from app.services.ai_analysis import analyze_stock
+from app.services.ai_analysis import ai_analysis_service
 from app.services.stock_service import stock_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
 
 @router.get("/{ticker}", response_model=schemas.StockDetail)
-def get_stock(
+async def get_stock(
     ticker: str,
     _: User = Depends(get_current_user),
 ):
-    return stock_service.get_stock(ticker)
+    logger.info("GET stock %s", ticker.upper())
+    return await run_in_threadpool(stock_service.get_stock, ticker)
 
 
 @router.get("/{ticker}/quote", response_model=schemas.StockQuote)
-def get_quote(
+async def get_quote(
     ticker: str,
     _: User = Depends(get_current_user),
 ):
-    return stock_service.get_quote(ticker)
+    logger.info("GET quote %s", ticker.upper())
+    return await run_in_threadpool(stock_service.get_quote, ticker)
 
 
 @router.get("/{ticker}/analysis", response_model=schemas.StockAnalysis)
-def get_analysis(
+async def get_analysis(
     ticker: str,
-    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    quote = stock_service.get_quote(ticker)
-    return analyze_stock(quote)
+    logger.info("GET analysis %s", ticker.upper())
+    result = await run_in_threadpool(ai_analysis_service.analyze, ticker)
+    crud.save_analysis(db, current_user.id, result)
+    return result

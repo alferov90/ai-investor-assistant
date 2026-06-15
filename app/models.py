@@ -1,7 +1,19 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -15,11 +27,22 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), default="")
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    telegram_link_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     holdings: Mapped[list["PortfolioHolding"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
+    watchlist: Mapped[list["WatchlistItem"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
+    analyses: Mapped[list["AnalysisRecord"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
+    alerts: Mapped[list["PriceAlert"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
 
@@ -43,3 +66,65 @@ class PortfolioHolding(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="holdings")
+
+
+class WatchlistItem(Base):
+    __tablename__ = "watchlist_items"
+    __table_args__ = (UniqueConstraint("user_id", "ticker", name="uq_watchlist_user_ticker"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    ticker: Mapped[str] = mapped_column(String(16), index=True)
+    notes: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="watchlist")
+
+
+class AnalysisRecord(Base):
+    __tablename__ = "analysis_records"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    ticker: Mapped[str] = mapped_column(String(16), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    current_price: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    currency: Mapped[str] = mapped_column(String(8), default="USD")
+    rating: Mapped[int] = mapped_column(Integer)
+    strengths: Mapped[list] = mapped_column(JSON, default=list)
+    weaknesses: Mapped[list] = mapped_column(JSON, default=list)
+    risks: Mapped[list] = mapped_column(JSON, default=list)
+    investment_conclusion: Mapped[str] = mapped_column(Text)
+    ai_powered: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="analyses")
+
+
+class PriceAlert(Base):
+    __tablename__ = "price_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    ticker: Mapped[str] = mapped_column(String(16), index=True)
+    condition_type: Mapped[str] = mapped_column(String(20))
+    target_value: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="alerts")

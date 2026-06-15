@@ -10,12 +10,7 @@
   <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
       <a href="/dashboard" class="font-semibold text-lg"><span class="text-emerald-400">AI</span> Investor</a>
-      <div class="flex items-center gap-4 text-sm">
-        <a href="/dashboard" class="text-slate-300 hover:text-white">Dashboard</a>
-        <a href="/portfolio" class="text-slate-300 hover:text-white">Портфель</a>
-        <a href="/analysis" class="text-emerald-400">Анализ</a>
-        <button onclick="logout()" class="text-slate-400 hover:text-white">Выйти</button>
-      </div>
+      <div id="main-nav" class="flex items-center gap-3 text-sm flex-wrap justify-end"></div>
     </div>
   </nav>
 
@@ -32,7 +27,11 @@
     </form>
 
     <p id="error" class="text-red-400 text-sm mb-4 hidden"></p>
-    <div id="loading" class="hidden text-slate-400 text-sm mb-4">Загрузка данных...</div>
+    <p id="login-hint" class="text-amber-400 text-sm mb-4 hidden">
+      <a href="/login" class="underline">Войти</a> или
+      <a href="/register" class="underline">зарегистрироваться</a>
+    </p>
+    <div id="loading" class="hidden text-slate-400 text-sm mb-4">Загрузка...</div>
 
     <div id="result" class="hidden space-y-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
@@ -43,24 +42,25 @@
           </div>
           <div class="text-right">
             <p id="stock-price" class="text-3xl font-bold"></p>
-            <p id="stock-change" class="text-sm"></p>
+            <div class="flex items-center justify-end gap-2 mt-2">
+              <span class="text-slate-400 text-sm">Рейтинг</span>
+              <span id="rating" class="text-2xl font-bold text-emerald-400">—</span>
+              <span class="text-slate-500 text-sm">/10</span>
+            </div>
           </div>
         </div>
         <div id="stock-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm"></div>
       </div>
 
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <h3 class="font-semibold text-lg">AI Summary</h3>
-          <span id="ai-badge" class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full hidden">GPT</span>
-        </div>
-        <p id="summary" class="text-slate-300 leading-relaxed"></p>
-      </div>
-
-      <div class="grid md:grid-cols-2 gap-6">
+      <div id="analysis-section" class="hidden space-y-6">
+      <div class="grid md:grid-cols-3 gap-6">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h3 class="font-semibold text-lg mb-3 text-emerald-400">Сильные стороны</h3>
           <ul id="strengths" class="space-y-2 text-sm text-slate-300"></ul>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <h3 class="font-semibold text-lg mb-3 text-amber-400">Слабые стороны</h3>
+          <ul id="weaknesses" class="space-y-2 text-sm text-slate-300"></ul>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h3 class="font-semibold text-lg mb-3 text-red-400">Риски</h3>
@@ -69,13 +69,18 @@
       </div>
 
       <div class="bg-slate-900 border border-emerald-800/50 rounded-xl p-6">
-        <h3 class="font-semibold text-lg mb-2">Рекомендация</h3>
-        <p id="recommendation" class="text-emerald-400 text-lg"></p>
+        <div class="flex items-center gap-2 mb-3">
+          <h3 class="font-semibold text-lg">Инвестиционный вывод</h3>
+          <span id="ai-badge" class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">GPT</span>
+        </div>
+        <p id="investment-conclusion" class="text-slate-300 leading-relaxed"></p>
+      </div>
       </div>
     </div>
   </main>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/layout.js"></script>
   <script src="/static/js/analysis.js"></script>
 </body>
 </html>

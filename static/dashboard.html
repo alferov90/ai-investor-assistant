@@ -10,20 +10,22 @@
   <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
       <a href="/dashboard" class="font-semibold text-lg"><span class="text-emerald-400">AI</span> Investor</a>
-      <div class="flex items-center gap-4 text-sm">
-        <a href="/dashboard" class="text-emerald-400">Dashboard</a>
-        <a href="/portfolio" class="text-slate-300 hover:text-white">Портфель</a>
-        <a href="/analysis" class="text-slate-300 hover:text-white">Анализ</a>
-        <button onclick="logout()" class="text-slate-400 hover:text-white">Выйти</button>
-      </div>
+      <div id="main-nav" class="flex items-center gap-3 text-sm flex-wrap justify-end"></div>
     </div>
   </nav>
 
   <main class="max-w-6xl mx-auto px-4 py-8">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold">Dashboard</h1>
-      <p id="welcome" class="text-slate-400 mt-1">Загрузка...</p>
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold">Dashboard</h1>
+        <p id="welcome" class="text-slate-400 mt-1">Загрузка...</p>
+      </div>
+      <button id="btn-portfolio-ai" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
+        AI-анализ портфеля
+      </button>
     </div>
+
+    <div id="portfolio-ai-result" class="hidden mb-8 bg-slate-900 border border-emerald-800/50 rounded-xl p-6"></div>
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -44,6 +46,19 @@
       </div>
     </div>
 
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg">Telegram Bot</h2>
+        <span id="telegram-status" class="text-xs px-2 py-1 rounded-full bg-slate-800 text-slate-400">—</span>
+      </div>
+      <p class="text-slate-400 text-sm mb-4">Команды: /analyze NVDA, /portfolio. Алерты приходят в Telegram.</p>
+      <div id="telegram-actions" class="flex gap-3 hidden">
+        <a id="telegram-link" href="#" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Подключить</a>
+        <button id="btn-telegram-disconnect" class="border border-slate-700 px-4 py-2 rounded-lg text-sm hidden">Отключить</button>
+      </div>
+      <p id="telegram-error" class="text-red-400 text-sm mt-3"></p>
+    </div>
+
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-lg">Топ позиций</h2>
@@ -56,6 +71,7 @@
   </main>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/layout.js"></script>
   <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
