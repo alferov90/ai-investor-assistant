@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     stock_cache_ttl_seconds: int = 300
+    twelve_data_api_key: str = ""
 
 
 settings = Settings()

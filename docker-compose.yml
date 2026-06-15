@@ -43,6 +43,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       STOCK_CACHE_TTL_SECONDS: ${STOCK_CACHE_TTL_SECONDS:-300}
+      TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

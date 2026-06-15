@@ -45,4 +45,12 @@ async function loadDashboard() {
 
 loadDashboard().catch((err) => {
   console.error(err);
+  document.getElementById("welcome").textContent = "Не удалось загрузить dashboard";
+  document.getElementById("total-value").textContent = "—";
+  document.getElementById("total-cost").textContent = "—";
+  document.getElementById("total-pnl").textContent = "—";
+  document.getElementById("holdings-count").textContent = "—";
+  document.getElementById("top-holdings").innerHTML = `
+    <p class="text-red-400 text-sm">${err.message}</p>
+  `;
 });

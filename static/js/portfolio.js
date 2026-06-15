@@ -102,4 +102,9 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-loadHoldings().catch(console.error);
+loadHoldings().catch((err) => {
+  console.error(err);
+  document.getElementById("holdings-list").innerHTML = `
+    <p class="text-red-400 text-sm">${err.message}</p>
+  `;
+});
