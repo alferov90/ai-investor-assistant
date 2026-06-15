@@ -681,6 +681,113 @@ select.input-field option {
   gap: 1.5rem;
 }
 
+.news-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.news-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.42)),
+    rgba(15, 23, 42, 0.52);
+  transition: border-color 0.18s, transform 0.18s, background 0.18s;
+}
+
+.news-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  opacity: 0.75;
+}
+
+.news-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(45, 212, 191, 0.28);
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(8, 13, 26, 0.58)),
+    rgba(15, 23, 42, 0.62);
+}
+
+.news-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.news-source {
+  min-width: 0;
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.1);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.news-date {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.news-title {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.28;
+}
+
+.news-summary {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.news-summary-muted {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.news-link {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: color 0.15s, gap 0.15s;
+}
+
+.news-link:hover {
+  gap: 0.55rem;
+  color: var(--accent-2);
+}
+
 .investment-conclusion {
   display: grid;
   gap: 1rem;
@@ -760,6 +867,20 @@ select.input-field option {
 }
 
 @media (max-width: 760px) {
+  .news-card {
+    padding: 0.9rem;
+  }
+
+  .news-card-topline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .news-source {
+    max-width: 100%;
+  }
+
   .conclusion-verdict {
     display: grid;
   }

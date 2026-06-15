@@ -77,6 +77,25 @@ function parseVerdict(sentence) {
   };
 }
 
+function formatNewsDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Дата не указана";
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function normalizeUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function renderConclusion(text) {
   const el = document.getElementById("investment-conclusion");
   const parts = splitConclusion(text);
@@ -196,16 +215,34 @@ function renderContext(analysis) {
   if (analysis.news?.length) {
     newsSection.classList.remove("hidden");
     newsList.innerHTML = analysis.news
-      .map(
-        (n) => `
-      <article class="pb-3 divider-row">
-        <p class="font-medium text-sm leading-snug">${n.headline}</p>
-        <p class="text-xs mt-1" style="color: var(--text-muted);">${new Date(n.published_at).toLocaleDateString("ru-RU")} · ${n.source}</p>
-        ${n.summary ? `<p class="text-sm mt-2" style="color: var(--text-muted);">${n.summary.slice(0, 180)}${n.summary.length > 180 ? "…" : ""}</p>` : ""}
-        ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener" class="link-accent text-xs mt-1 inline-block">Читать →</a>` : ""}
-      </article>
-    `
-      )
+      .map((n, index) => {
+        const summary = String(n.summary || "").trim();
+        const url = normalizeUrl(n.url);
+        const source = n.source || "Источник";
+        const summaryPreview = summary.length > 210 ? `${summary.slice(0, 210)}…` : summary;
+        return `
+          <article class="news-card">
+            <div class="news-card-topline">
+              <span class="news-source">${escapeHtml(source)}</span>
+              <span class="news-date">${formatNewsDate(n.published_at)}</span>
+            </div>
+            <h4 class="news-title">${escapeHtml(n.headline || `Новость ${index + 1}`)}</h4>
+            ${
+              summaryPreview
+                ? `<p class="news-summary">${escapeHtml(summaryPreview)}</p>`
+                : `<p class="news-summary news-summary-muted">Краткое описание недоступно, откройте источник для деталей.</p>`
+            }
+            ${
+              url
+                ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="news-link">
+                    <span>Читать источник</span>
+                    <span aria-hidden="true">→</span>
+                  </a>`
+                : ""
+            }
+          </article>
+        `;
+      })
       .join("");
   } else {
     newsSection.classList.add("hidden");
