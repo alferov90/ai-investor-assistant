@@ -1,18 +1,8 @@
 import logging
-<<<<<<< HEAD
-import multiprocessing as mp
-import socket
-import time
-from typing import Any
-
-import httpx
-import yfinance as yf
-=======
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any
 
 import httpx
->>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
 from fastapi import HTTPException, status
 
 from app.config import settings
@@ -20,12 +10,7 @@ from app.redis_client import cache_get, cache_set
 from app.schemas import CompanyProfile, StockDetail, StockQuote
 
 logger = logging.getLogger(__name__)
-YAHOO_TIMEOUT_SECONDS = 8
-YAHOO_COOLDOWN_SECONDS = 60
 TWELVE_DATA_TIMEOUT_SECONDS = 10
-_provider_unavailable_until = 0.0
-
-socket.setdefaulttimeout(YAHOO_TIMEOUT_SECONDS)
 
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -47,26 +32,6 @@ def _safe_float(value: Any) -> float | None:
         return None
 
 
-<<<<<<< HEAD
-def _fetch_yahoo_worker(symbol: str, conn) -> None:
-    try:
-        socket.setdefaulttimeout(YAHOO_TIMEOUT_SECONDS)
-        stock = yf.Ticker(symbol)
-        info = stock.info or {}
-        history = stock.history(period="5d", timeout=YAHOO_TIMEOUT_SECONDS)
-        closes = []
-        if not history.empty:
-            closes = [float(value) for value in history["Close"].dropna().tail(5).tolist()]
-        conn.send(("ok", info, closes))
-    except Exception as exc:
-        conn.send(("error", str(exc)))
-    finally:
-        conn.close()
-
-
-class StockService:
-    """Market data integration for stock quotes and details."""
-=======
 def _httpx_client() -> httpx.Client:
     kwargs: dict = {
         "timeout": settings.yahoo_fetch_timeout_seconds,
@@ -244,8 +209,7 @@ def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
 
 
 class StockService:
-    """Stock market data: Finnhub / Yahoo / Stooq."""
->>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
+    """Stock market data: Twelve Data / Finnhub / Yahoo / Stooq."""
 
     def __init__(self, cache_ttl: int | None = None) -> None:
         self.cache_ttl = cache_ttl or settings.stock_cache_ttl_seconds
@@ -257,9 +221,6 @@ class StockService:
         if cached:
             return StockDetail(**cached)
 
-<<<<<<< HEAD
-        quote = self.get_quote(symbol)
-=======
         info, history = fetch_market_data(symbol)
         detail = self._build_stock_detail(symbol, info, history)
         cache_set(cache_key, detail.model_dump(), self.cache_ttl)
@@ -304,17 +265,16 @@ class StockService:
         revenue_growth = (
             round(revenue_growth_raw * 100, 2) if revenue_growth_raw is not None else None
         )
->>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
 
         return StockDetail(
             ticker=symbol,
-            name=quote.name,
-            currency=quote.currency,
-            current_price=quote.price,
-            market_cap=quote.market_cap,
-            pe_ratio=quote.pe_ratio,
-            eps=None,
-            revenue_growth=None,
+            name=str(info.get("shortName") or info.get("longName") or symbol),
+            currency=str(info.get("currency") or "USD"),
+            current_price=round(current, 2),
+            market_cap=_safe_float(info.get("marketCap")),
+            pe_ratio=_safe_float(info.get("trailingPE")),
+            eps=_safe_float(info.get("trailingEps")),
+            revenue_growth=revenue_growth,
         )
 
     def get_quote(self, ticker: str) -> StockQuote:
@@ -324,39 +284,38 @@ class StockService:
         if cached:
             return StockQuote(**cached)
 
-<<<<<<< HEAD
-        quote = self._fetch_twelve_data_quote(symbol)
-=======
-        info, history = fetch_market_data(symbol)
-        current = self._resolve_price(info, history)
-        if current is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No price data for {symbol}",
+        if settings.twelve_data_api_key:
+            quote = self._fetch_twelve_data_quote(symbol)
+        else:
+            info, history = fetch_market_data(symbol)
+            current = self._resolve_price(info, history)
+            if current is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No price data for {symbol}",
+                )
+
+            previous = _safe_float(info.get("regularMarketPreviousClose")) or current
+            if previous == current and len(history) > 1:
+                previous = history[-2]
+
+            change = current - previous
+            change_percent = (change / previous * 100) if previous else 0.0
+
+            quote = StockQuote(
+                ticker=symbol,
+                name=str(info.get("shortName") or info.get("longName") or symbol),
+                price=round(current, 2),
+                change=round(change, 2),
+                change_percent=round(change_percent, 2),
+                currency=str(info.get("currency") or "USD"),
+                market_cap=_safe_float(info.get("marketCap")),
+                pe_ratio=_safe_float(info.get("trailingPE")),
+                fifty_two_week_high=_safe_float(info.get("fiftyTwoWeekHigh")),
+                fifty_two_week_low=_safe_float(info.get("fiftyTwoWeekLow")),
+                sector=info.get("sector"),
+                industry=info.get("industry"),
             )
-
-        previous = _safe_float(info.get("regularMarketPreviousClose")) or current
-        if previous == current and len(history) > 1:
-            previous = history[-2]
-
-        change = current - previous
-        change_percent = (change / previous * 100) if previous else 0.0
-
-        quote = StockQuote(
-            ticker=symbol,
-            name=str(info.get("shortName") or info.get("longName") or symbol),
-            price=round(current, 2),
-            change=round(change, 2),
-            change_percent=round(change_percent, 2),
-            currency=str(info.get("currency") or "USD"),
-            market_cap=_safe_float(info.get("marketCap")),
-            pe_ratio=_safe_float(info.get("trailingPE")),
-            fifty_two_week_high=_safe_float(info.get("fiftyTwoWeekHigh")),
-            fifty_two_week_low=_safe_float(info.get("fiftyTwoWeekLow")),
-            sector=info.get("sector"),
-            industry=info.get("industry"),
-        )
->>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
         cache_set(cache_key, quote.model_dump(), self.cache_ttl)
         return quote
 
@@ -369,7 +328,6 @@ class StockService:
                 continue
         return result
 
-<<<<<<< HEAD
     def _fetch_twelve_data_quote(self, symbol: str) -> StockQuote:
         if not settings.twelve_data_api_key:
             raise HTTPException(
@@ -430,64 +388,11 @@ class StockService:
             industry=None,
         )
 
-    def _fetch_yahoo(self, symbol: str):
-        global _provider_unavailable_until
-
-        if time.monotonic() < _provider_unavailable_until:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Market data provider is temporarily unavailable",
-            )
-
-        try:
-            parent_conn, child_conn = mp.Pipe(duplex=False)
-            process = mp.Process(target=_fetch_yahoo_worker, args=(symbol, child_conn))
-            process.start()
-            child_conn.close()
-
-            if not parent_conn.poll(YAHOO_TIMEOUT_SECONDS):
-                process.terminate()
-                process.join(timeout=2)
-                _provider_unavailable_until = time.monotonic() + YAHOO_COOLDOWN_SECONDS
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Market data provider timed out for {symbol}",
-                )
-
-            state, *payload = parent_conn.recv()
-            process.join(timeout=2)
-            if state == "error":
-                raise RuntimeError(payload[0])
-            info, closes = payload
-        except Exception as exc:
-            if isinstance(exc, HTTPException):
-                raise
-            _provider_unavailable_until = time.monotonic() + YAHOO_COOLDOWN_SECONDS
-            logger.exception("Failed to fetch Yahoo Finance data for %s", symbol)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Unable to fetch data for {symbol}",
-            ) from exc
-
-        if not closes and not info.get("regularMarketPrice") and not info.get("currentPrice"):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Ticker {symbol} not found",
-            )
-        return info, closes
-
-    @staticmethod
-    def _resolve_price(info: dict, closes: list[float]) -> float | None:
-        current = _safe_float(info.get("regularMarketPrice") or info.get("currentPrice"))
-        if current is None and closes:
-            current = closes[-1]
-=======
     @staticmethod
     def _resolve_price(info: dict, history: list[float]) -> float | None:
         current = _safe_float(info.get("regularMarketPrice") or info.get("currentPrice"))
         if current is None and history:
             current = history[-1]
->>>>>>> 567e9a1 (Add VPS deploy script and GitHub Actions workflow)
         return current
 
 
