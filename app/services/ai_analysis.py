@@ -27,13 +27,14 @@ Rules:
 - Every strength, weakness, and risk must cite a supplied number or a specific missing input.
 - Never write generic claims such as "лидер отрасли", "сильная компания", or "имеет потенциал".
 - A one-day price move is context, not a buy/sell signal.
+- Do not list a positive one-day move as a strength.
 - If fewer than two fundamental metrics are available, rating must be 4-6 and confidence is low.
 - Rating 1 = strong sell, 10 = strong buy.
 - The investment_conclusion must use exactly this practical structure in 4 short sentences:
   1) "Вердикт: <ИЗБЕГАТЬ/НАБЛЮДАТЬ/ОСТОРОЖНО ПОКУПАТЬ/ДЕРЖАТЬ>; уверенность <низкая/средняя/высокая>."
-  2) State the strongest supplied evidence with numbers.
+  2) State current price, position in the 52-week range, and distance to its boundaries.
   3) State the main limitation or risk.
-  4) State a concrete trigger that would improve or worsen the view.
+  4) State exact supplied price levels that would improve or worsen the view.
 Never claim certainty, invent missing data, or mention API keys/data-provider setup."""
 
 
@@ -100,6 +101,7 @@ class AIAnalysisService:
         daily_change = f"{quote.change_percent:+.2f}%" if quote else "N/A"
         year_range = "N/A"
         range_position = "N/A"
+        range_context = "Недоступен"
         if quote and quote.fifty_two_week_low is not None and quote.fifty_two_week_high is not None:
             low = quote.fifty_two_week_low
             high = quote.fifty_two_week_high
@@ -107,6 +109,20 @@ class AIAnalysisService:
             if high > low:
                 position = (quote.price - low) / (high - low) * 100
                 range_position = f"{position:.1f}% от минимума к максимуму"
+                distance_to_high = (high - quote.price) / quote.price * 100
+                distance_from_low = (quote.price - low) / quote.price * 100
+                if position >= 75:
+                    zone = "верхняя четверть диапазона: не догонять цену без новых данных"
+                elif position <= 25:
+                    zone = "нижняя четверть диапазона: нужен признак стабилизации"
+                else:
+                    zone = "середина диапазона: выраженного ценового преимущества нет"
+                range_context = (
+                    f"{zone}; до максимума {distance_to_high:.1f}%, "
+                    f"выше минимума на {distance_from_low:.1f}%; "
+                    f"контрольные уровни: ухудшение ниже {low:.2f}, "
+                    f"улучшение выше {high:.2f} {quote.currency}"
+                )
 
         return f"""Проанализируй акцию для частного инвестора.
 
@@ -124,6 +140,7 @@ class AIAnalysisService:
 - Изменение за последнюю сессию: {daily_change}
 - Диапазон за 52 недели: {year_range}
 - Положение цены внутри диапазона: {range_position}
+- Интерпретация диапазона и контрольные уровни: {range_context}
 - Доступно фундаментальных метрик: {available_fundamentals} из 4
 
 Описание компании:
