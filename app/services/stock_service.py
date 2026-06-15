@@ -215,14 +215,14 @@ def _fetch_finnhub(symbol: str) -> dict[str, Any]:
 
 
 def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
-    """Twelve Data → Finnhub → Yahoo Chart → Stooq."""
+    """Finnhub fundamentals → Twelve Data → Yahoo Chart → Stooq."""
     symbol = symbol.strip().upper()
     providers: list[tuple[str, Any]] = []
 
-    if settings.twelve_data_api_key:
-        providers.append(("twelve_data", _fetch_twelve_data))
     if settings.finnhub_api_key:
         providers.append(("finnhub", _fetch_finnhub))
+    if settings.twelve_data_api_key:
+        providers.append(("twelve_data", _fetch_twelve_data))
     providers.append(("yahoo", _fetch_yahoo_chart))
     providers.append(("stooq", _fetch_stooq))
 
@@ -246,7 +246,7 @@ def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
 
 
 class StockService:
-    """Stock market data: Twelve Data / Finnhub / Yahoo / Stooq."""
+    """Stock market data: Finnhub / Twelve Data / Yahoo / Stooq."""
 
     def __init__(self, cache_ttl: int | None = None) -> None:
         self.cache_ttl = cache_ttl or settings.stock_cache_ttl_seconds
