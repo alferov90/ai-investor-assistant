@@ -29,6 +29,18 @@ services:
       retries: 10
     restart: unless-stopped
 
+  telegram-proxy:
+    image: python:3.12-slim
+    container_name: investor-telegram-proxy
+    network_mode: host
+    environment:
+      LISTEN_HOST: 172.19.0.1
+      LISTEN_PORT: 8888
+    volumes:
+      - ./scripts/telegram_connect_proxy.py:/proxy.py:ro
+    command: ["python", "/proxy.py"]
+    restart: unless-stopped
+
   api:
     build: .
     container_name: investor-api
@@ -55,6 +67,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      telegram-proxy:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]

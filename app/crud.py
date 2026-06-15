@@ -24,9 +24,10 @@ def get_user_by_link_token(db: Session, token: str) -> models.User | None:
 
 
 def create_telegram_link(db: Session, user: models.User) -> str:
-    user.telegram_link_token = secrets.token_hex(24)
-    db.commit()
-    db.refresh(user)
+    if not user.telegram_link_token:
+        user.telegram_link_token = secrets.token_hex(24)
+        db.commit()
+        db.refresh(user)
     username = settings.telegram_bot_username.lstrip("@")
     return f"https://t.me/{username}?start={user.telegram_link_token}"
 
