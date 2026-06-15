@@ -40,16 +40,16 @@ async function loadHoldings() {
   container.innerHTML = holdings
     .map(
       (h) => `
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="glass-card glass-card-padded flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p class="font-semibold text-lg">${h.ticker}</p>
-          <p class="text-slate-400 text-sm">${h.shares} шт. × $${Number(h.avg_price).toFixed(2)}</p>
-          ${h.notes ? `<p class="text-slate-500 text-sm mt-1">${h.notes}</p>` : ""}
+          <p class="font-display font-semibold text-lg">${h.ticker}</p>
+          <p class="text-sm" style="color: var(--text-muted);">${h.shares} шт. × $${Number(h.avg_price).toFixed(2)}</p>
+          ${h.notes ? `<p class="text-sm mt-1" style="color: var(--text-muted);">${h.notes}</p>` : ""}
         </div>
-        <div class="flex gap-2">
-          <a href="/analysis?ticker=${h.ticker}" class="text-sm text-emerald-400 hover:underline px-3 py-1.5">Анализ</a>
-          <button data-edit='${JSON.stringify(h)}' class="text-sm border border-slate-700 px-3 py-1.5 rounded-lg hover:border-slate-500">Изменить</button>
-          <button data-delete="${h.id}" class="text-sm text-red-400 border border-red-900/50 px-3 py-1.5 rounded-lg hover:bg-red-950/30">Удалить</button>
+        <div class="flex gap-2 flex-wrap">
+          <a href="/analysis?ticker=${h.ticker}" class="btn btn-ghost btn-sm">Анализ</a>
+          <button data-edit='${JSON.stringify(h)}' class="btn btn-secondary btn-sm">Изменить</button>
+          <button data-delete="${h.id}" class="btn btn-secondary btn-sm text-negative">Удалить</button>
         </div>
       </div>
     `

@@ -4,74 +4,80 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <a href="/dashboard" class="font-semibold text-lg"><span class="text-emerald-400">AI</span> Investor</a>
-      <div id="main-nav" class="flex items-center gap-3 text-sm flex-wrap justify-end"></div>
-    </div>
-  </nav>
+<body class="app-body">
+  <div class="app-bg">
+    <div class="app-bg-orb app-bg-orb-1"></div>
+    <div class="app-bg-orb app-bg-orb-2"></div>
+  </div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
 
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">Dashboard</h1>
-        <p id="welcome" class="text-slate-400 mt-1">Загрузка...</p>
+    <main class="app-main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Dashboard</h1>
+          <p id="welcome" class="page-subtitle">Загрузка...</p>
+        </div>
+        <button id="btn-portfolio-ai" class="btn btn-primary btn-sm">✨ AI-анализ портфеля</button>
       </div>
-      <button id="btn-portfolio-ai" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium">
-        AI-анализ портфеля
-      </button>
-    </div>
 
-    <div id="portfolio-ai-result" class="hidden mb-8 bg-slate-900 border border-emerald-800/50 rounded-xl p-6"></div>
+      <div id="portfolio-ai-result" class="hidden mb-8 glass-card glass-card-padded" style="border-color: rgba(45,212,191,0.25);"></div>
 
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <p class="text-slate-400 text-sm">Стоимость портфеля</p>
-        <p id="total-value" class="text-2xl font-bold mt-1">—</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="stat-card">
+          <p class="stat-label">Стоимость</p>
+          <p id="total-value" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Инвестировано</p>
+          <p id="total-cost" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">P/L</p>
+          <p id="total-pnl" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Позиций</p>
+          <p id="holdings-count" class="stat-value">—</p>
+        </div>
       </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <p class="text-slate-400 text-sm">Инвестировано</p>
-        <p id="total-cost" class="text-2xl font-bold mt-1">—</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <p class="text-slate-400 text-sm">P/L</p>
-        <p id="total-pnl" class="text-2xl font-bold mt-1">—</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <p class="text-slate-400 text-sm">Позиций</p>
-        <p id="holdings-count" class="text-2xl font-bold mt-1">—</p>
-      </div>
-    </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-lg">Telegram Bot</h2>
-        <span id="telegram-status" class="text-xs px-2 py-1 rounded-full bg-slate-800 text-slate-400">—</span>
+      <div class="glass-card glass-card-padded mb-8">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 class="font-display font-bold text-lg">Telegram Bot</h2>
+          <span id="telegram-status" class="badge">—</span>
+        </div>
+        <p class="text-sm mb-4" style="color: var(--text-muted);">/analyze · /portfolio · /watchlist · /digest · утренний дайджест 09:00 МСК</p>
+        <div id="telegram-actions" class="flex gap-3 hidden">
+          <a id="telegram-link" href="#" class="btn btn-primary btn-sm">Подключить</a>
+          <button id="btn-telegram-disconnect" class="btn btn-secondary btn-sm hidden">Отключить</button>
+        </div>
+        <p id="telegram-error" class="text-negative text-sm mt-3"></p>
       </div>
-      <p class="text-slate-400 text-sm mb-4">Команды: /analyze NVDA, /portfolio. Алерты приходят в Telegram.</p>
-      <div id="telegram-actions" class="flex gap-3 hidden">
-        <a id="telegram-link" href="#" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Подключить</a>
-        <button id="btn-telegram-disconnect" class="border border-slate-700 px-4 py-2 rounded-lg text-sm hidden">Отключить</button>
-      </div>
-      <p id="telegram-error" class="text-red-400 text-sm mt-3"></p>
-    </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-lg">Топ позиций</h2>
-        <a href="/portfolio" class="text-sm text-emerald-400 hover:underline">Управлять портфелем</a>
+      <div class="glass-card glass-card-padded">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display font-bold text-lg">Топ позиций</h2>
+          <a href="/portfolio" class="link-accent text-sm">Управлять →</a>
+        </div>
+        <div id="top-holdings">
+          <p class="text-sm" style="color: var(--text-muted);">Загрузка...</p>
+        </div>
       </div>
-      <div id="top-holdings" class="space-y-3">
-        <p class="text-slate-500 text-sm">Загрузка...</p>
-      </div>
-    </div>
-  </main>
+    </main>
+  </div>
 
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
-  <script src="/static/js/dashboard.js?v=3"></script>
+  <script src="/static/js/dashboard.js?v=4"></script>
+  <script>injectLogo("app-logo"); renderNav("/dashboard");</script>
 </body>
 </html>

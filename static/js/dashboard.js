@@ -4,7 +4,7 @@ renderNav("/dashboard");
 function setTelegramStatus(text, cls) {
   const el = document.getElementById("telegram-status");
   el.textContent = text;
-  el.className = `text-xs px-2 py-1 rounded-full ${cls}`;
+  el.className = `badge ${cls}`;
 }
 
 async function updateTelegramUI() {
@@ -19,12 +19,12 @@ async function updateTelegramUI() {
       apiFetch("/api/telegram/status").catch(() => null),
     ]);
   } catch {
-    setTelegramStatus("Ошибка", "bg-slate-800 text-slate-400");
+    setTelegramStatus("Ошибка", "");
     return;
   }
 
   if (!status?.configured) {
-    setTelegramStatus("Не настроен", "bg-amber-500/20 text-amber-400");
+    setTelegramStatus("Не настроен", "");
     actions.classList.add("hidden");
     errorEl.textContent = "Добавьте TELEGRAM_BOT_TOKEN в .env на сервере.";
     return;
@@ -36,12 +36,12 @@ async function updateTelegramUI() {
 
   if (connected) {
     const bot = status.bot_username ? `@${status.bot_username}` : "Telegram";
-    setTelegramStatus(`Подключено (${bot})`, "bg-emerald-500/20 text-emerald-400");
+    setTelegramStatus(`Подключено (${bot})`, "badge-live");
     telegramLink.textContent = "Открыть бота";
     telegramLink.href = `https://t.me/${status.bot_username}`;
     document.getElementById("btn-telegram-disconnect").classList.remove("hidden");
   } else {
-    setTelegramStatus("Не подключено", "bg-slate-800 text-slate-400");
+    setTelegramStatus("Не подключено", "");
     telegramLink.textContent = "Подключить Telegram";
     document.getElementById("btn-telegram-disconnect").classList.add("hidden");
     try {
@@ -72,14 +72,14 @@ async function loadDashboard() {
 
   const pnlEl = document.getElementById("total-pnl");
   pnlEl.textContent = `${formatMoney(stats.total_pnl)} (${formatPercent(stats.total_pnl_percent)})`;
-  pnlEl.className = `text-2xl font-bold mt-1 ${pnlClass(stats.total_pnl)}`;
+  pnlEl.className = `stat-value ${pnlClass(stats.total_pnl)}`;
 
   document.getElementById("holdings-count").textContent = stats.holdings_count;
 
   const container = document.getElementById("top-holdings");
   if (!stats.top_holdings.length) {
     container.innerHTML = `
-      <p class="text-slate-500 text-sm">Портфель пуст. <a href="/portfolio" class="text-emerald-400 hover:underline">Добавьте первый тикер</a></p>
+      <p class="text-sm" style="color: var(--text-muted);">Портфель пуст. <a href="/portfolio" class="link-accent">Добавьте первый тикер</a></p>
     `;
     return;
   }
@@ -87,7 +87,7 @@ async function loadDashboard() {
   container.innerHTML = stats.top_holdings
     .map(
       (h) => `
-      <div class="flex items-center justify-between py-3 border-b border-slate-800 last:border-0">
+      <div class="flex items-center justify-between py-3 divider-row">
         <div>
           <p class="font-medium">${h.ticker}</p>
           <p class="text-slate-400 text-sm">${h.name}</p>

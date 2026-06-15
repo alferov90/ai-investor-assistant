@@ -4,50 +4,51 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center px-4">
-  <div class="w-full max-w-md">
+<body class="app-body auth-wrap">
+  <div class="app-bg">
+    <div class="app-bg-orb app-bg-orb-1"></div>
+    <div class="app-bg-orb app-bg-orb-2"></div>
+  </div>
+
+  <div class="auth-card">
     <div class="text-center mb-8">
-      <a href="/" class="font-semibold text-xl"><span class="text-emerald-400">AI</span> Investor</a>
-      <h1 class="text-2xl font-bold mt-4">Вход в аккаунт</h1>
+      <span id="auth-logo"></span>
+      <h1 class="font-display text-2xl font-bold mt-6">С возвращением</h1>
+      <p class="text-sm mt-2" style="color: var(--text-muted);">Войдите в свой инвестиционный кабинет</p>
     </div>
 
-    <form id="login-form" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+    <form id="login-form" class="glass-card glass-card-padded space-y-4">
       <div>
-        <label class="block text-sm text-slate-400 mb-1">Email</label>
-        <input type="email" id="email" required
-          class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500">
+        <label class="form-label">Email</label>
+        <input type="email" id="email" required class="input-field">
       </div>
       <div>
-        <label class="block text-sm text-slate-400 mb-1">Пароль</label>
-        <input type="password" id="password" required
-          class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500">
+        <label class="form-label">Пароль</label>
+        <input type="password" id="password" required class="input-field">
       </div>
-      <p id="error" class="text-red-400 text-sm hidden"></p>
-      <button type="submit"
-        class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg font-medium transition">
-        Войти
-      </button>
+      <p id="error" class="text-negative text-sm hidden"></p>
+      <button type="submit" class="btn btn-primary w-full">Войти</button>
     </form>
 
-    <p class="text-center text-slate-400 text-sm mt-6">
-      Нет аккаунта? <a href="/register" class="text-emerald-400 hover:underline">Зарегистрироваться</a>
+    <p class="text-center text-sm mt-6" style="color: var(--text-muted);">
+      Нет аккаунта? <a href="/register" class="link-accent">Зарегистрироваться</a>
     </p>
   </div>
 
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/layout.js"></script>
+  <script>injectLogo("auth-logo", "/");</script>
   <script>
     redirectIfAuthed();
-
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next") || "/dashboard";
-
     document.getElementById("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const errorEl = document.getElementById("error");
       errorEl.classList.add("hidden");
-
       try {
         const data = await apiFetch("/api/auth/login", {
           method: "POST",

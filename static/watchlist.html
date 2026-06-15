@@ -4,33 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Watchlist — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <a href="/dashboard" class="font-semibold text-lg"><span class="text-emerald-400">AI</span> Investor</a>
-      <div id="main-nav" class="flex items-center gap-3 text-sm flex-wrap justify-end"></div>
-    </div>
-  </nav>
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">Watchlist</h1>
-      <button id="btn-add" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm">+ Добавить</button>
-    </div>
-    <p class="text-slate-400 text-sm mb-6">Тикеры на радаре — без указания количества акций.</p>
-    <div id="list" class="space-y-3"><p class="text-slate-500">Загрузка...</p></div>
-  </main>
-  <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
-      <h2 class="text-lg font-semibold mb-4">Добавить в watchlist</h2>
+<body class="app-body">
+  <div class="app-bg"><div class="app-bg-orb app-bg-orb-1"></div><div class="app-bg-orb app-bg-orb-2"></div></div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
+    <main class="app-main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Watchlist</h1>
+          <p class="page-subtitle">Тикеры на радаре — без количества акций</p>
+        </div>
+        <button id="btn-add" class="btn btn-primary btn-sm">+ Добавить</button>
+      </div>
+      <div id="list" class="space-y-3"><p style="color: var(--text-muted);">Загрузка...</p></div>
+    </main>
+  </div>
+  <div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 px-4">
+    <div class="glass-card glass-card-padded w-full max-w-md">
+      <h2 class="font-display font-bold text-lg mb-4">Добавить в watchlist</h2>
       <form id="form" class="space-y-4">
-        <input type="text" id="ticker" required placeholder="NVDA" class="w-full uppercase bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5">
-        <input type="text" id="notes" placeholder="Заметки" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5">
-        <p id="error" class="text-red-400 text-sm hidden"></p>
+        <input type="text" id="ticker" required placeholder="NVDA" class="input-field uppercase">
+        <input type="text" id="notes" placeholder="Заметки" class="input-field">
+        <p id="error" class="text-negative text-sm hidden"></p>
         <div class="flex gap-3">
-          <button type="submit" class="flex-1 bg-emerald-500 text-white py-2.5 rounded-lg">Сохранить</button>
-          <button type="button" id="cancel" class="flex-1 border border-slate-700 py-2.5 rounded-lg">Отмена</button>
+          <button type="submit" class="btn btn-primary flex-1">Сохранить</button>
+          <button type="button" id="cancel" class="btn btn-secondary flex-1">Отмена</button>
         </div>
       </form>
     </div>
@@ -38,5 +44,6 @@
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
   <script src="/static/js/watchlist.js"></script>
+  <script>injectLogo("app-logo"); renderNav("/watchlist");</script>
 </body>
 </html>

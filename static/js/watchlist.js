@@ -35,15 +35,15 @@ async function load() {
     return;
   }
   el.innerHTML = items.map((i) => `
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex justify-between items-center gap-4">
+    <div class="glass-card glass-card-padded flex justify-between items-center gap-4">
       <div>
-        <p class="font-semibold text-lg">${i.ticker}</p>
-        ${i.notes ? `<p class="text-slate-400 text-sm">${i.notes}</p>` : ""}
+        <p class="font-display font-semibold text-lg">${i.ticker}</p>
+        ${i.notes ? `<p class="text-sm" style="color: var(--text-muted);">${i.notes}</p>` : ""}
         ${i.current_price != null ? `<p class="text-sm mt-1">${formatMoney(i.current_price)} <span class="${pnlClass(i.change_percent)}">${formatPercent(i.change_percent || 0)}</span></p>` : ""}
       </div>
       <div class="flex gap-2">
-        <a href="/analysis?ticker=${i.ticker}" class="text-emerald-400 text-sm hover:underline">Анализ</a>
-        <button data-id="${i.id}" class="delete-btn text-red-400 text-sm">Удалить</button>
+        <a href="/analysis?ticker=${i.ticker}" class="link-accent text-sm">Анализ</a>
+        <button data-id="${i.id}" class="delete-btn text-negative text-sm">Удалить</button>
       </div>
     </div>
   `).join("");

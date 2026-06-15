@@ -14,12 +14,12 @@ async function load(ticker) {
     return;
   }
   el.innerHTML = items.map((r) => `
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:border-slate-600 record" data-id="${r.id}">
+    <div class="glass-card glass-card-padded flex justify-between items-center cursor-pointer record hover:border-teal-500/30" data-id="${r.id}">
       <div>
-        <span class="font-semibold">${r.ticker}</span> — ${r.name}
-        <p class="text-slate-400 text-sm">${fmtDate(r.created_at)} · ${formatMoney(Number(r.current_price))} · рейтинг ${r.rating}/10 ${r.ai_powered ? "GPT" : "базовый"}</p>
+        <span class="font-display font-semibold">${r.ticker}</span> — ${r.name}
+        <p class="text-sm mt-1" style="color: var(--text-muted);">${fmtDate(r.created_at)} · ${formatMoney(Number(r.current_price))} · рейтинг ${r.rating}/10 ${r.ai_powered ? "GPT" : "базовый"}</p>
       </div>
-      <span class="text-emerald-400 text-sm">Подробнее →</span>
+      <span class="link-accent text-sm">Подробнее →</span>
     </div>
   `).join("");
   el.querySelectorAll(".record").forEach((row) => {

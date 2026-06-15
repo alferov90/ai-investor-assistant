@@ -91,7 +91,7 @@ function formatPercent(value) {
 }
 
 function pnlClass(value) {
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-red-400";
-  return "text-slate-400";
+  if (value > 0) return "text-positive";
+  if (value < 0) return "text-negative";
+  return "";
 }

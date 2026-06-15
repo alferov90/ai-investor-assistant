@@ -3,84 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Анализ акций — AI Investor</title>
+  <title>Анализ — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <a href="/dashboard" class="font-semibold text-lg"><span class="text-emerald-400">AI</span> Investor</a>
-      <div id="main-nav" class="flex items-center gap-3 text-sm flex-wrap justify-end"></div>
-    </div>
-  </nav>
+<body class="app-body">
+  <div class="app-bg"><div class="app-bg-orb app-bg-orb-1"></div><div class="app-bg-orb app-bg-orb-2"></div></div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
+    <main class="app-main">
+      <h1 class="page-title mb-2">AI-анализ акций</h1>
+      <p class="page-subtitle mb-8">GPT-оценка сильных сторон, рисков и рейтинга 1–10</p>
 
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold mb-6">AI-анализ акций</h1>
+      <form id="search-form" class="flex flex-col sm:flex-row gap-3 mb-8">
+        <input type="text" id="ticker" required placeholder="AAPL, MSFT, NVDA..."
+          class="input-field flex-1 uppercase">
+        <button type="submit" class="btn btn-primary">✨ Анализировать</button>
+      </form>
 
-    <form id="search-form" class="flex gap-3 mb-8">
-      <input type="text" id="ticker" required placeholder="Введите тикер (AAPL, MSFT, TSLA...)"
-        class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 uppercase focus:outline-none focus:border-emerald-500">
-      <button type="submit"
-        class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-lg font-medium transition">
-        Анализировать
-      </button>
-    </form>
+      <p id="error" class="text-negative text-sm mb-4 hidden"></p>
+      <p id="login-hint" class="text-sm mb-4 hidden" style="color: var(--accent);">
+        <a href="/login" class="link-accent">Войти</a> или <a href="/register" class="link-accent">зарегистрироваться</a>
+      </p>
+      <div id="loading" class="hidden text-sm mb-4" style="color: var(--text-muted);">Загрузка...</div>
 
-    <p id="error" class="text-red-400 text-sm mb-4 hidden"></p>
-    <p id="login-hint" class="text-amber-400 text-sm mb-4 hidden">
-      <a href="/login" class="underline">Войти</a> или
-      <a href="/register" class="underline">зарегистрироваться</a>
-    </p>
-    <div id="loading" class="hidden text-slate-400 text-sm mb-4">Загрузка...</div>
-
-    <div id="result" class="hidden space-y-6">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div>
-            <h2 id="stock-name" class="text-xl font-bold"></h2>
-            <p id="stock-ticker" class="text-slate-400"></p>
-          </div>
-          <div class="text-right">
-            <p id="stock-price" class="text-3xl font-bold"></p>
-            <div class="flex items-center justify-end gap-2 mt-2">
-              <span class="text-slate-400 text-sm">Рейтинг</span>
-              <span id="rating" class="text-2xl font-bold text-emerald-400">—</span>
-              <span class="text-slate-500 text-sm">/10</span>
+      <div id="result" class="hidden space-y-6">
+        <div class="glass-card glass-card-padded">
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <h2 id="stock-name" class="font-display text-xl font-bold"></h2>
+              <p id="stock-ticker" style="color: var(--text-muted);"></p>
+            </div>
+            <div class="text-right">
+              <p id="stock-price" class="font-display text-3xl font-bold"></p>
+              <div class="flex items-center justify-end gap-2 mt-2">
+                <span class="text-sm" style="color: var(--text-muted);">Рейтинг</span>
+                <span id="rating" class="font-display text-2xl font-bold text-positive">—</span>
+                <span class="text-sm" style="color: var(--text-muted);">/10</span>
+              </div>
             </div>
           </div>
+          <div id="stock-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm"></div>
         </div>
-        <div id="stock-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm"></div>
-      </div>
 
-      <div id="analysis-section" class="hidden space-y-6">
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h3 class="font-semibold text-lg mb-3 text-emerald-400">Сильные стороны</h3>
-          <ul id="strengths" class="space-y-2 text-sm text-slate-300"></ul>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h3 class="font-semibold text-lg mb-3 text-amber-400">Слабые стороны</h3>
-          <ul id="weaknesses" class="space-y-2 text-sm text-slate-300"></ul>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h3 class="font-semibold text-lg mb-3 text-red-400">Риски</h3>
-          <ul id="risks" class="space-y-2 text-sm text-slate-300"></ul>
+        <div id="analysis-section" class="hidden space-y-6">
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="glass-card glass-card-padded">
+              <h3 class="font-display font-bold mb-3 text-positive">Сильные стороны</h3>
+              <ul id="strengths" class="space-y-2 text-sm"></ul>
+            </div>
+            <div class="glass-card glass-card-padded">
+              <h3 class="font-display font-bold mb-3" style="color: #fbbf24;">Слабые стороны</h3>
+              <ul id="weaknesses" class="space-y-2 text-sm"></ul>
+            </div>
+            <div class="glass-card glass-card-padded">
+              <h3 class="font-display font-bold mb-3 text-negative">Риски</h3>
+              <ul id="risks" class="space-y-2 text-sm"></ul>
+            </div>
+          </div>
+          <div class="glass-card glass-card-padded" style="border-color: rgba(45,212,191,0.25);">
+            <div class="flex items-center gap-2 mb-3">
+              <h3 class="font-display font-bold">Инвестиционный вывод</h3>
+              <span id="ai-badge" class="badge badge-ai">GPT</span>
+            </div>
+            <p id="investment-conclusion" class="leading-relaxed" style="color: var(--text-muted);"></p>
+          </div>
         </div>
       </div>
-
-      <div class="bg-slate-900 border border-emerald-800/50 rounded-xl p-6">
-        <div class="flex items-center gap-2 mb-3">
-          <h3 class="font-semibold text-lg">Инвестиционный вывод</h3>
-          <span id="ai-badge" class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">GPT</span>
-        </div>
-        <p id="investment-conclusion" class="text-slate-300 leading-relaxed"></p>
-      </div>
-      </div>
-    </div>
-  </main>
-
+    </main>
+  </div>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
   <script src="/static/js/analysis.js"></script>
+  <script>injectLogo("app-logo"); renderNav("/analysis");</script>
 </body>
 </html>

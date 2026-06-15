@@ -37,15 +37,15 @@ async function load() {
     return;
   }
   el.innerHTML = items.map((a) => `
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
+    <div class="glass-card glass-card-padded flex justify-between items-center gap-4">
       <div>
-        <span class="font-semibold ${a.is_active ? "" : "text-slate-500 line-through"}">${a.ticker}</span>
-        <span class="text-slate-400 text-sm ml-2">${LABELS[a.condition_type]} ${a.target_value}${a.condition_type.startsWith("change") ? "%" : "$"}</span>
-        ${a.last_triggered_at ? `<p class="text-xs text-slate-500 mt-1">Срабатывал: ${new Date(a.last_triggered_at).toLocaleString("ru-RU")}</p>` : ""}
+        <span class="font-display font-semibold ${a.is_active ? "" : "opacity-50 line-through"}">${a.ticker}</span>
+        <span class="text-sm ml-2" style="color: var(--text-muted);">${LABELS[a.condition_type]} ${a.target_value}${a.condition_type.startsWith("change") ? "%" : "$"}</span>
+        ${a.last_triggered_at ? `<p class="text-xs mt-1" style="color: var(--text-muted);">Срабатывал: ${new Date(a.last_triggered_at).toLocaleString("ru-RU")}</p>` : ""}
       </div>
       <div class="flex gap-2">
-        <button data-id="${a.id}" data-active="${!a.is_active}" class="toggle text-sm border border-slate-700 px-2 py-1 rounded">${a.is_active ? "Выкл" : "Вкл"}</button>
-        <button data-id="${a.id}" class="del text-red-400 text-sm">Удалить</button>
+        <button data-id="${a.id}" data-active="${!a.is_active}" class="toggle btn btn-ghost btn-sm">${a.is_active ? "Выкл" : "Вкл"}</button>
+        <button data-id="${a.id}" class="del btn btn-secondary btn-sm text-negative">Удалить</button>
       </div>
     </div>
   `).join("");
