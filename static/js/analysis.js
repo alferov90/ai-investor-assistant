@@ -216,7 +216,8 @@ function renderContext(analysis) {
     newsSection.classList.remove("hidden");
     newsList.innerHTML = analysis.news
       .map((n, index) => {
-        const summary = String(n.summary || "").trim();
+        const headline = n.headline_ru || n.headline || `Новость ${index + 1}`;
+        const summary = String(n.summary_ru || n.summary || "").trim();
         const url = normalizeUrl(n.url);
         const source = n.source || "Источник";
         const summaryPreview = summary.length > 210 ? `${summary.slice(0, 210)}…` : summary;
@@ -226,7 +227,7 @@ function renderContext(analysis) {
               <span class="news-source">${escapeHtml(source)}</span>
               <span class="news-date">${formatNewsDate(n.published_at)}</span>
             </div>
-            <h4 class="news-title">${escapeHtml(n.headline || `Новость ${index + 1}`)}</h4>
+            <h4 class="news-title">${escapeHtml(headline)}</h4>
             ${
               summaryPreview
                 ? `<p class="news-summary">${escapeHtml(summaryPreview)}</p>`

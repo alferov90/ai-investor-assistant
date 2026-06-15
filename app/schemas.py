@@ -128,6 +128,8 @@ class StockAnalysis(BaseModel):
 class NewsItem(BaseModel):
     headline: str
     summary: str = ""
+    headline_ru: str | None = None
+    summary_ru: str | None = None
     source: str = ""
     published_at: datetime
     url: str | None = None

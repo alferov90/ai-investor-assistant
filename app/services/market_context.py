@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +14,11 @@ from app.redis_client import cache_get, cache_set
 from app.schemas import EarningsEvent, MarketContext, NewsItem
 
 logger = logging.getLogger(__name__)
+
+NEWS_TRANSLATION_SYSTEM = """Ты переводишь финансовые новости на русский язык.
+Сохраняй названия компаний, тикеры, числа, проценты и финансовые термины точно.
+Пиши естественно и кратко. Не добавляй фактов, которых нет в исходном тексте.
+Верни только валидный JSON."""
 
 
 def _finnhub_get(path: str, params: dict | None = None) -> Any:
@@ -30,12 +36,98 @@ def _finnhub_get(path: str, params: dict | None = None) -> Any:
     return response.json()
 
 
+def _yandex_translation_configured() -> bool:
+    return bool(settings.yandex_cloud_api_key and settings.yandex_cloud_folder_id)
+
+
+def _strip_json_fence(content: str) -> str:
+    content = content.strip()
+    if content.startswith("```"):
+        content = content.removeprefix("```json").removeprefix("```")
+        content = content.removesuffix("```").strip()
+    return content
+
+
+def _translate_news_items(ticker: str, items: list[NewsItem]) -> list[NewsItem]:
+    if not items or not _yandex_translation_configured():
+        return items
+
+    payload = [
+        {
+            "id": index,
+            "headline": item.headline[:300],
+            "summary": item.summary[:500],
+        }
+        for index, item in enumerate(items)
+    ]
+    prompt = (
+        "Переведи headline и summary на русский язык для показа в инвестиционном "
+        f"интерфейсе. Тикер: {ticker}. Верни JSON строго такого вида: "
+        '{"items":[{"id":0,"headline_ru":"...","summary_ru":"..."}]}.\n\n'
+        f"Новости:\n{json.dumps(payload, ensure_ascii=False)}"
+    )
+    body = {
+        "modelUri": f"gpt://{settings.yandex_cloud_folder_id}/{settings.yandex_gpt_model}",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.15,
+            "maxTokens": 3000,
+        },
+        "messages": [
+            {"role": "system", "text": NEWS_TRANSLATION_SYSTEM},
+            {"role": "user", "text": prompt},
+        ],
+    }
+
+    try:
+        response = httpx.post(
+            "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+            json=body,
+            headers={
+                "Authorization": f"Api-Key {settings.yandex_cloud_api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=45,
+        )
+        response.raise_for_status()
+        content = response.json()["result"]["alternatives"][0]["message"]["text"]
+        data = json.loads(_strip_json_fence(content))
+    except Exception as exc:
+        logger.warning("YandexGPT news translation failed for %s: %s", ticker, exc)
+        return items
+
+    translated = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(translated, list):
+        return items
+
+    by_id = {
+        row.get("id"): row
+        for row in translated
+        if isinstance(row, dict) and isinstance(row.get("id"), int)
+    }
+    for index, item in enumerate(items):
+        row = by_id.get(index)
+        if not row:
+            continue
+        headline_ru = str(row.get("headline_ru") or "").strip()
+        summary_ru = str(row.get("summary_ru") or "").strip()
+        if headline_ru:
+            item.headline_ru = headline_ru
+        if summary_ru:
+            item.summary_ru = summary_ru
+    return items
+
+
 def fetch_company_news(ticker: str, days: int = 14) -> list[NewsItem]:
     ticker = ticker.strip().upper()
     cache_key = f"news:{ticker}:{days}"
     cached = cache_get(cache_key)
     if cached:
-        return [NewsItem(**item) for item in cached]
+        items = [NewsItem(**item) for item in cached]
+        if _yandex_translation_configured() and any(not item.headline_ru for item in items):
+            items = _translate_news_items(ticker, items)
+            cache_set(cache_key, [i.model_dump(mode="json") for i in items], 900)
+        return items
 
     if not settings.finnhub_api_key:
         return []
@@ -69,6 +161,7 @@ def fetch_company_news(ticker: str, days: int = 14) -> list[NewsItem]:
             )
         )
 
+    items = _translate_news_items(ticker, items)
     cache_set(cache_key, [i.model_dump(mode="json") for i in items], 900)
     return items
 
