@@ -26,6 +26,5 @@ jobs:
             git checkout main
             git pull origin main --rebase
             docker compose build --no-cache api
-            docker compose up -d
-            docker compose exec -T api alembic upgrade head
+            docker compose up -d --wait --wait-timeout 120
             curl -sf http://localhost:8000/health

@@ -62,8 +62,7 @@ git pull origin "$DEPLOY_BRANCH" --rebase
 
 echo "→ docker compose build & up"
 docker compose build --no-cache api
-docker compose up -d
-docker compose exec -T api alembic upgrade head
+docker compose up -d --wait --wait-timeout 120
 
 echo "→ health check"
 curl -sf http://localhost:8000/health | head -c 200
