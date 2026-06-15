@@ -3,8 +3,21 @@ renderNav("/alerts");
 
 const LABELS = { above: "Цена >", below: "Цена <", change_up: "Рост ≥", change_down: "Падение ≥" };
 const modal = document.getElementById("modal");
-document.getElementById("btn-add").onclick = () => { modal.classList.remove("hidden"); modal.classList.add("flex"); };
-document.getElementById("cancel").onclick = () => { modal.classList.add("hidden"); modal.classList.remove("flex"); };
+document.getElementById("btn-add").onclick = () => {
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  document.getElementById("condition").value = "above";
+  const trigger = document.querySelector("#condition-custom .custom-select-trigger span");
+  if (trigger) trigger.textContent = "Цена выше";
+  document.querySelectorAll("#condition-custom .custom-select-option").forEach((el) => {
+    el.classList.toggle("is-selected", el.dataset.value === "above");
+  });
+};
+document.getElementById("cancel").onclick = () => {
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+  document.querySelector("#condition-custom")?.classList.remove("open");
+};
 
 document.getElementById("form").onsubmit = async (e) => {
   e.preventDefault();
@@ -22,6 +35,12 @@ document.getElementById("form").onsubmit = async (e) => {
     modal.classList.add("hidden");
     modal.classList.remove("flex");
     document.getElementById("form").reset();
+    document.getElementById("condition").value = "above";
+    const lbl = document.querySelector("#condition-custom .custom-select-trigger span");
+    if (lbl) lbl.textContent = "Цена выше";
+    document.querySelectorAll("#condition-custom .custom-select-option").forEach((el) => {
+      el.classList.toggle("is-selected", el.dataset.value === "above");
+    });
     load();
   } catch (ex) {
     err.textContent = ex.message;

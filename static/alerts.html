@@ -28,17 +28,21 @@
     </main>
   </div>
   <div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 px-4">
-    <div class="glass-card glass-card-padded w-full max-w-md">
+    <div class="glass-card glass-card-padded w-full max-w-md relative" style="overflow: visible;">
       <h2 class="font-display font-bold text-lg mb-4">Новый алерт</h2>
       <form id="form" class="space-y-4">
-        <input type="text" id="ticker" required placeholder="AAPL" class="input-field uppercase">
-        <select id="condition" class="input-field">
-          <option value="above">Цена выше</option>
-          <option value="below">Цена ниже</option>
-          <option value="change_up">Рост за день ≥ %</option>
-          <option value="change_down">Падение за день ≥ %</option>
-        </select>
-        <input type="number" id="target" required step="any" min="0.01" placeholder="150 или 5 (для %)" class="input-field">
+        <div>
+          <label class="form-label" for="ticker">Тикер</label>
+          <input type="text" id="ticker" required placeholder="AAPL" class="input-field uppercase">
+        </div>
+        <div>
+          <label class="form-label" for="condition">Условие</label>
+          <input type="hidden" id="condition" value="above">
+        </div>
+        <div>
+          <label class="form-label" for="target">Порог</label>
+          <input type="number" id="target" required step="any" min="0.01" placeholder="150 или 5 (для %)" class="input-field">
+        </div>
         <p id="error" class="text-negative text-sm hidden"></p>
         <div class="flex gap-3">
           <button type="submit" class="btn btn-primary flex-1">Создать</button>
@@ -49,7 +53,17 @@
   </div>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
+  <script src="/static/js/custom-select.js"></script>
   <script src="/static/js/alerts.js"></script>
-  <script>injectLogo("app-logo"); renderNav("/alerts");</script>
+  <script>
+    injectLogo("app-logo");
+    renderNav("/alerts");
+    initCustomSelect("condition", [
+      { value: "above", label: "Цена выше" },
+      { value: "below", label: "Цена ниже" },
+      { value: "change_up", label: "Рост за день ≥ %" },
+      { value: "change_down", label: "Падение за день ≥ %" },
+    ], "above");
+  </script>
 </body>
 </html>
