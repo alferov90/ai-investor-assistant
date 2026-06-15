@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -117,6 +119,90 @@ class StockAnalysis(BaseModel):
     investment_conclusion: str
     rating: int = Field(ge=1, le=10)
     ai_powered: bool = True
+    news: list["NewsItem"] = []
+    earnings: list["EarningsEvent"] = []
+    upcoming_earnings: "EarningsEvent | None" = None
+    previous_rating: int | None = None
+
+
+class NewsItem(BaseModel):
+    headline: str
+    summary: str = ""
+    source: str = ""
+    published_at: datetime
+    url: str | None = None
+
+
+class EarningsEvent(BaseModel):
+    date: str
+    period: str | None = None
+    eps_actual: float | None = None
+    eps_estimate: float | None = None
+    revenue_actual: float | None = None
+    revenue_estimate: float | None = None
+    surprise_pct: float | None = None
+
+
+class MarketContext(BaseModel):
+    ticker: str
+    news: list[NewsItem]
+    earnings: list[EarningsEvent]
+    upcoming_earnings: EarningsEvent | None = None
+
+
+class TransactionCreate(BaseModel):
+    ticker: str = Field(min_length=1, max_length=16)
+    txn_type: str
+    shares: Decimal = Field(ge=0)
+    price: Decimal = Field(ge=0)
+    fee: Decimal = Field(default=Decimal("0"), ge=0)
+    traded_at: datetime
+    notes: str = Field(default="", max_length=500)
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("txn_type")
+    @classmethod
+    def normalize_type(cls, value: str) -> str:
+        val = value.strip().lower()
+        if val not in {"buy", "sell", "dividend"}:
+            raise ValueError("txn_type must be buy, sell, or dividend")
+        return val
+
+
+class TransactionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticker: str
+    txn_type: str
+    shares: Decimal
+    price: Decimal
+    fee: Decimal
+    traded_at: datetime
+    notes: str
+    source: str
+    created_at: datetime
+
+
+class TransactionImportResult(BaseModel):
+    imported: int
+    skipped: int
+    errors: list[str]
+    holdings_updated: int
+    realized_pnl: float = 0
+    dividends_total: float = 0
+
+
+class TransactionSummary(BaseModel):
+    transaction_count: int
+    buy_count: int
+    sell_count: int
+    realized_pnl: float
+    dividends_total: float
 
 
 class PriceHistoryPoint(BaseModel):
@@ -142,6 +228,38 @@ class DashboardStats(BaseModel):
     total_pnl_percent: float
     top_holdings: list[dict]
     chart_holdings: list[dict] = []
+
+
+class BenchmarkPoint(BaseModel):
+    date: str
+    portfolio: float
+    benchmark: float
+
+
+class PortfolioBenchmark(BaseModel):
+    benchmark: str
+    range: str
+    portfolio_return: float
+    benchmark_return: float
+    alpha: float
+    max_drawdown_pct: float
+    points: list[BenchmarkPoint]
+
+
+class RiskAlert(BaseModel):
+    level: str
+    code: str
+    title: str
+    message: str
+
+
+class PortfolioRisks(BaseModel):
+    score: int
+    level: str
+    alerts: list[RiskAlert]
+    concentration: list[dict]
+    sectors: list[dict]
+    max_drawdown_pct: float | None = None
 
 
 class WatchlistCreate(BaseModel):

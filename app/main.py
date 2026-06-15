@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.redis_client import get_redis
-from app.routers import alerts, analyses, auth, portfolio, stocks, telegram, watchlist
+from app.routers import alerts, analyses, auth, portfolio, stocks, telegram, transactions, watchlist
 from app.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,7 @@ app.include_router(watchlist.router)
 app.include_router(analyses.router)
 app.include_router(alerts.router)
 app.include_router(telegram.router)
+app.include_router(transactions.router)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -100,6 +101,11 @@ def watchlist_page():
 @app.get("/history")
 def history_page():
     return serve_page("history.html")
+
+
+@app.get("/transactions")
+def transactions_page():
+    return serve_page("transactions.html")
 
 
 @app.get("/alerts")

@@ -45,6 +45,9 @@ class User(Base):
     alerts: Mapped[list["PriceAlert"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    transactions: Mapped[list["PortfolioTransaction"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
 
 
 class PortfolioHolding(Base):
@@ -128,3 +131,25 @@ class PriceAlert(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="alerts")
+
+
+class PortfolioTransaction(Base):
+    __tablename__ = "portfolio_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    ticker: Mapped[str] = mapped_column(String(16), index=True)
+    txn_type: Mapped[str] = mapped_column(String(16))
+    shares: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    price: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
+    fee: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=0)
+    traded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    notes: Mapped[str] = mapped_column(String(500), default="")
+    source: Mapped[str] = mapped_column(String(32), default="manual")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="transactions")

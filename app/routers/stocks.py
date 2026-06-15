@@ -9,6 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import User
 from app.services.ai_analysis import ai_analysis_service
+from app.services.market_context import get_market_context
 from app.services.stock_service import stock_service
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,14 @@ async def get_history(
     return await run_in_threadpool(stock_service.get_history, ticker, range)
 
 
+@router.get("/{ticker}/context", response_model=schemas.MarketContext)
+async def get_market_context_route(
+    ticker: str,
+    _: User = Depends(get_current_user),
+):
+    return await run_in_threadpool(get_market_context, ticker)
+
+
 @router.get("/{ticker}/analysis", response_model=schemas.StockAnalysis)
 async def get_analysis(
     ticker: str,
@@ -51,6 +60,13 @@ async def get_analysis(
     current_user: User = Depends(get_current_user),
 ):
     logger.info("GET analysis %s", ticker.upper())
-    result = await run_in_threadpool(ai_analysis_service.analyze, ticker)
+    symbol = ticker.upper()
+    previous_rating = crud.get_latest_analysis_rating(db, current_user.id, symbol)
+    result = await run_in_threadpool(
+        ai_analysis_service.analyze,
+        ticker,
+        None,
+        previous_rating,
+    )
     crud.save_analysis(db, current_user.id, result)
     return result

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Журнал сделок — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css?v=3">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="app-body">
+  <div class="app-bg"><div class="app-bg-orb app-bg-orb-1"></div><div class="app-bg-orb app-bg-orb-2"></div></div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
+    <main class="app-main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Журнал сделок</h1>
+          <p class="page-subtitle">Покупки, продажи, дивиденды — портфель пересчитывается автоматически</p>
+        </div>
+        <button id="btn-add" class="btn btn-primary btn-sm">+ Сделка</button>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="stat-card">
+          <p class="stat-label">Сделок</p>
+          <p id="stat-count" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Реализованный P/L</p>
+          <p id="stat-realized" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Дивиденды</p>
+          <p id="stat-dividends" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Покупок / продаж</p>
+          <p id="stat-buys-sells" class="stat-value">—</p>
+        </div>
+      </div>
+
+      <div class="glass-card glass-card-padded mb-8">
+        <h2 class="chart-title mb-2">Импорт CSV</h2>
+        <p class="text-sm mb-4" style="color: var(--text-muted);">
+          Колонки: <code>date, ticker, type, shares, price, fee, notes</code>.
+          Типы: buy / sell / dividend.
+          <a href="/api/transactions/sample.csv" class="link-accent">Скачать пример</a>
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <input type="file" id="csv-file" accept=".csv,text/csv" class="input-field flex-1">
+          <button id="btn-import" class="btn btn-primary btn-sm">Импортировать</button>
+        </div>
+        <p id="import-result" class="text-sm mt-3 hidden"></p>
+      </div>
+
+      <div id="txn-list" class="space-y-3">
+        <p style="color: var(--text-muted);">Загрузка...</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 px-4">
+    <div class="glass-card glass-card-padded w-full max-w-md">
+      <h2 class="font-display font-bold text-lg mb-4">Добавить сделку</h2>
+      <form id="txn-form" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Тикер</label>
+            <input type="text" id="ticker" required class="input-field uppercase" placeholder="AAPL">
+          </div>
+          <div>
+            <label class="form-label">Тип</label>
+            <select id="txn-type" class="input-field">
+              <option value="buy">Покупка</option>
+              <option value="sell">Продажа</option>
+              <option value="dividend">Дивиденд</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Дата</label>
+          <input type="datetime-local" id="traded-at" required class="input-field">
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="form-label">Кол-во</label>
+            <input type="number" id="shares" min="0" step="any" class="input-field" value="0">
+          </div>
+          <div>
+            <label class="form-label">Цена / сумма</label>
+            <input type="number" id="price" required min="0" step="any" class="input-field">
+          </div>
+          <div>
+            <label class="form-label">Комиссия</label>
+            <input type="number" id="fee" min="0" step="any" class="input-field" value="0">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Заметки</label>
+          <input type="text" id="notes" class="input-field">
+        </div>
+        <p id="form-error" class="text-negative text-sm hidden"></p>
+        <div class="flex gap-3">
+          <button type="submit" class="btn btn-primary flex-1">Сохранить</button>
+          <button type="button" id="btn-cancel" class="btn btn-secondary flex-1">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/layout.js"></script>
+  <script src="/static/js/transactions.js"></script>
+  <script>injectLogo("app-logo"); renderNav("/transactions");</script>
+</body>
+</html>

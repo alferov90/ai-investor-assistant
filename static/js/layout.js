@@ -13,6 +13,7 @@ function renderNav(active) {
   const links = [
     ["Dashboard", "/dashboard"],
     ["Портфель", "/portfolio"],
+    ["Сделки", "/transactions"],
     ["Watchlist", "/watchlist"],
     ["Анализ", "/analysis"],
     ["История", "/history"],

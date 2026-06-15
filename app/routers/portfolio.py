@@ -7,6 +7,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import User
 from app.services.ai_analysis import ai_analysis_service
+from app.services.portfolio_analytics import compute_benchmark, compute_risks
 from app.services.stock_service import fetch_quotes
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -124,3 +125,22 @@ def dashboard(
         top_holdings=enriched[:5],
         chart_holdings=enriched,
     )
+
+
+@router.get("/benchmark", response_model=schemas.PortfolioBenchmark)
+async def portfolio_benchmark(
+    benchmark: str = "SPY",
+    range: str = "3mo",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await run_in_threadpool(compute_benchmark, db, current_user.id, benchmark, range)
+
+
+@router.get("/risks", response_model=schemas.PortfolioRisks)
+async def portfolio_risks(
+    range: str = "3mo",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await run_in_threadpool(compute_risks, db, current_user.id, range)

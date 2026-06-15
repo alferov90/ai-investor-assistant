@@ -84,6 +84,8 @@ function renderAnalysis(analysis) {
 
   createRatingGauge(document.getElementById("rating-gauge"), analysis.rating);
 
+  renderContext(analysis);
+
   renderList("strengths", analysis.strengths);
   renderList("weaknesses", analysis.weaknesses);
   renderList("risks", analysis.risks);
@@ -99,6 +101,64 @@ function renderAnalysis(analysis) {
   }
 
   document.getElementById("analysis-section").classList.remove("hidden");
+}
+
+function renderContext(analysis) {
+  const section = document.getElementById("context-section");
+  section.classList.remove("hidden");
+
+  const banner = document.getElementById("earnings-banner");
+  const earningsText = document.getElementById("earnings-text");
+  if (analysis.upcoming_earnings) {
+    const ue = analysis.upcoming_earnings;
+    banner.classList.remove("hidden");
+    let text = `Дата: ${ue.date}`;
+    if (ue.eps_estimate != null) text += ` · EPS consensus: $${ue.eps_estimate.toFixed(2)}`;
+    if (analysis.previous_rating != null) {
+      text += ` · Прошлый AI-рейтинг: ${analysis.previous_rating}/10`;
+    }
+    earningsText.textContent = text;
+  } else {
+    banner.classList.add("hidden");
+  }
+
+  const newsSection = document.getElementById("news-section");
+  const newsList = document.getElementById("news-list");
+  if (analysis.news?.length) {
+    newsSection.classList.remove("hidden");
+    newsList.innerHTML = analysis.news
+      .map(
+        (n) => `
+      <article class="pb-3 divider-row">
+        <p class="font-medium text-sm leading-snug">${n.headline}</p>
+        <p class="text-xs mt-1" style="color: var(--text-muted);">${new Date(n.published_at).toLocaleDateString("ru-RU")} · ${n.source}</p>
+        ${n.summary ? `<p class="text-sm mt-2" style="color: var(--text-muted);">${n.summary.slice(0, 180)}${n.summary.length > 180 ? "…" : ""}</p>` : ""}
+        ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener" class="link-accent text-xs mt-1 inline-block">Читать →</a>` : ""}
+      </article>
+    `
+      )
+      .join("");
+  } else {
+    newsSection.classList.add("hidden");
+  }
+
+  const histSection = document.getElementById("earnings-history");
+  const histList = document.getElementById("earnings-list");
+  if (analysis.earnings?.length) {
+    histSection.classList.remove("hidden");
+    histList.innerHTML = analysis.earnings
+      .map((e) => {
+        const parts = [e.date];
+        if (e.period) parts.push(e.period);
+        if (e.eps_actual != null) parts.push(`EPS ${e.eps_actual}`);
+        if (e.eps_estimate != null) parts.push(`est ${e.eps_estimate}`);
+        if (e.surprise_pct != null) parts.push(`${e.surprise_pct >= 0 ? "+" : ""}${e.surprise_pct.toFixed(1)}%`);
+        return `<p>${parts.join(" · ")}</p>`;
+      })
+      .join("");
+  } else {
+    histSection.classList.add("hidden");
+  }
 }
 
 async function loadPriceChart(ticker, range) {
@@ -131,12 +191,14 @@ async function analyze(ticker) {
   const resultEl = document.getElementById("result");
   const analysisSection = document.getElementById("analysis-section");
   const chartsSection = document.getElementById("charts-section");
+  const contextSection = document.getElementById("context-section");
 
   currentTicker = ticker;
   errorEl.classList.add("hidden");
   resultEl.classList.add("hidden");
   analysisSection.classList.add("hidden");
   chartsSection.classList.add("hidden");
+  contextSection.classList.add("hidden");
   destroyChart("price");
   destroyChart("rating-gauge");
   loadingEl.classList.remove("hidden");

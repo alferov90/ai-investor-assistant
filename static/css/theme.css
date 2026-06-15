@@ -737,3 +737,70 @@ select.input-field option {
     margin-left: auto;
   }
 }
+
+/* Risk alerts */
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.risk-ok { background: rgba(52, 211, 153, 0.15); color: var(--positive); border: 1px solid rgba(52, 211, 153, 0.3); }
+.risk-low { background: rgba(56, 189, 248, 0.12); color: var(--accent-2); border: 1px solid rgba(56, 189, 248, 0.25); }
+.risk-medium { background: rgba(251, 191, 36, 0.12); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+.risk-high { background: rgba(248, 113, 113, 0.12); color: var(--negative); border: 1px solid rgba(248, 113, 113, 0.3); }
+
+.risk-alerts { max-height: 280px; overflow-y: auto; }
+
+.risk-alert {
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.risk-alert-danger { border-color: rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.06); }
+.risk-alert-warning { border-color: rgba(251, 191, 36, 0.35); background: rgba(251, 191, 36, 0.06); }
+.risk-alert-info { border-color: rgba(56, 189, 248, 0.25); background: rgba(56, 189, 248, 0.05); }
+
+.risk-alert-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.risk-alert-danger .risk-alert-title { color: var(--negative); }
+.risk-alert-warning .risk-alert-title { color: #fbbf24; }
+.risk-alert-info .risk-alert-title { color: var(--accent-2); }
+
+.risk-alert-msg {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.sector-bar-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2.5rem;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.sector-bar-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+}
+
+.sector-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}

@@ -302,3 +302,92 @@ def mark_alert_triggered(db: Session, alert: models.PriceAlert) -> None:
 
     alert.last_triggered_at = datetime.now(timezone.utc)
     db.commit()
+
+
+# --- Transactions ---
+
+
+def list_transactions(
+    db: Session, user_id: int, ticker: str | None = None, limit: int = 200
+) -> list[models.PortfolioTransaction]:
+    q = db.query(models.PortfolioTransaction).filter(
+        models.PortfolioTransaction.user_id == user_id
+    )
+    if ticker:
+        q = q.filter(models.PortfolioTransaction.ticker == ticker.upper())
+    return q.order_by(models.PortfolioTransaction.traded_at.desc()).limit(limit).all()
+
+
+def get_transaction(
+    db: Session, user_id: int, txn_id: int
+) -> models.PortfolioTransaction | None:
+    return (
+        db.query(models.PortfolioTransaction)
+        .filter(
+            models.PortfolioTransaction.id == txn_id,
+            models.PortfolioTransaction.user_id == user_id,
+        )
+        .first()
+    )
+
+
+def create_transaction(
+    db: Session, user_id: int, data: schemas.TransactionCreate, source: str = "manual"
+) -> models.PortfolioTransaction:
+    txn = models.PortfolioTransaction(
+        user_id=user_id,
+        ticker=data.ticker,
+        txn_type=data.txn_type,
+        shares=data.shares,
+        price=data.price,
+        fee=data.fee,
+        traded_at=data.traded_at,
+        notes=data.notes,
+        source=source,
+    )
+    db.add(txn)
+    db.commit()
+    db.refresh(txn)
+    return txn
+
+
+def create_transactions_bulk(
+    db: Session, user_id: int, rows: list[schemas.TransactionCreate], source: str = "csv"
+) -> list[models.PortfolioTransaction]:
+    created: list[models.PortfolioTransaction] = []
+    for data in rows:
+        txn = models.PortfolioTransaction(
+            user_id=user_id,
+            ticker=data.ticker,
+            txn_type=data.txn_type,
+            shares=data.shares,
+            price=data.price,
+            fee=data.fee,
+            traded_at=data.traded_at,
+            notes=data.notes,
+            source=source,
+        )
+        db.add(txn)
+        created.append(txn)
+    db.commit()
+    for txn in created:
+        db.refresh(txn)
+    return created
+
+
+def delete_transaction(db: Session, txn: models.PortfolioTransaction) -> None:
+    db.delete(txn)
+    db.commit()
+
+
+def get_latest_analysis_rating(db: Session, user_id: int, ticker: str) -> int | None:
+    record = (
+        db.query(models.AnalysisRecord)
+        .filter(
+            models.AnalysisRecord.user_id == user_id,
+            models.AnalysisRecord.ticker == ticker.upper(),
+        )
+        .order_by(models.AnalysisRecord.created_at.desc())
+        .first()
+    )
+    return record.rating if record else None

@@ -50,6 +50,47 @@
         </div>
       </div>
 
+      <div id="analytics-row" class="hidden chart-grid-2 mb-8">
+        <div class="glass-card glass-card-padded">
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Бенчмарк</h2>
+              <p id="benchmark-summary" class="text-sm mt-1" style="color: var(--text-muted);">—</p>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <div class="chart-range-tabs" id="benchmark-tabs">
+                <button type="button" class="chart-range-tab benchmark-tab active" data-benchmark="SPY">SPY</button>
+                <button type="button" class="chart-range-tab benchmark-tab" data-benchmark="QQQ">QQQ</button>
+              </div>
+              <div class="chart-range-tabs" id="benchmark-range-tabs">
+                <button type="button" class="chart-range-tab benchmark-range active" data-range="1mo">1M</button>
+                <button type="button" class="chart-range-tab benchmark-range" data-range="3mo">3M</button>
+                <button type="button" class="chart-range-tab benchmark-range" data-range="6mo">6M</button>
+                <button type="button" class="chart-range-tab benchmark-range" data-range="1y">1Y</button>
+              </div>
+            </div>
+          </div>
+          <p id="benchmark-alpha" class="chart-change positive mb-2">—</p>
+          <div class="chart-wrap">
+            <canvas id="benchmark-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-card glass-card-padded">
+          <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h2 class="chart-title">Риски портфеля</h2>
+            <span id="risk-badge" class="risk-badge risk-ok">—</span>
+          </div>
+          <div id="risk-alerts" class="risk-alerts space-y-2">
+            <p class="text-sm" style="color: var(--text-muted);">Загрузка...</p>
+          </div>
+          <div id="risk-sectors" class="mt-4 hidden">
+            <p class="text-xs font-semibold mb-2" style="color: var(--text-muted);">ПО СЕКТОРАМ</p>
+            <div id="risk-sectors-list" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="charts-row" class="hidden chart-grid-2">
         <div class="glass-card glass-card-padded">
           <h2 class="chart-title mb-4">Распределение портфеля</h2>
@@ -93,8 +134,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
-  <script src="/static/js/charts.js?v=1"></script>
-  <script src="/static/js/dashboard.js?v=6"></script>
+  <script src="/static/js/charts.js?v=2"></script>
+  <script src="/static/js/dashboard.js?v=7"></script>
   <script>injectLogo("app-logo"); renderNav("/dashboard");</script>
 </body>
 </html>

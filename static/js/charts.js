@@ -451,3 +451,73 @@ async function loadSparklines(container, tickers, range = "1mo") {
     })
   );
 }
+
+function createBenchmarkChart(canvas, data, key = "benchmark") {
+  if (typeof Chart === "undefined") return null;
+  if (!canvas || !data?.points?.length) return null;
+
+  const labels = data.points.map((p) => {
+    const d = new Date(p.date + "T00:00:00");
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  });
+
+  const chart = new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Портфель",
+          data: data.points.map((p) => p.portfolio),
+          borderColor: "#2dd4bf",
+          backgroundColor: "rgba(45, 212, 191, 0.12)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2.5,
+        },
+        {
+          label: data.benchmark,
+          data: data.points.map((p) => p.benchmark),
+          borderColor: "#38bdf8",
+          backgroundColor: "transparent",
+          borderDash: [6, 4],
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: baseChartOptions({
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { maxTicksLimit: 6, maxRotation: 0 },
+        },
+        y: {
+          grid: { color: "rgba(148, 163, 184, 0.08)" },
+          ticks: {
+            callback: (v) => Number(v).toFixed(0),
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          position: "top",
+          align: "end",
+          labels: { boxWidth: 12, font: { size: 11 } },
+        },
+        tooltip: {
+          callbacks: {
+            label: (item) => ` ${item.dataset.label}: ${Number(item.raw).toFixed(2)}`,
+          },
+        },
+      },
+    }),
+  });
+
+  registerChart(key, chart);
+  return chart;
+}

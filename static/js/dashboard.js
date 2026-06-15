@@ -1,6 +1,9 @@
 if (!requireAuth()) throw new Error("redirecting");
 renderNav("/dashboard");
 
+let benchmarkState = { benchmark: "SPY", range: "3mo" };
+let hasPortfolio = false;
+
 function setTelegramStatus(text, cls) {
   const el = document.getElementById("telegram-status");
   el.textContent = text;
@@ -59,6 +62,124 @@ async function updateTelegramUI() {
   };
 }
 
+function riskBadgeClass(level) {
+  return `risk-badge risk-${level === "high" ? "high" : level === "medium" ? "medium" : level === "low" ? "low" : "ok"}`;
+}
+
+function riskLevelLabel(level, score) {
+  const labels = { ok: "Низкий", low: "Умеренный", medium: "Средний", high: "Высокий" };
+  return `${labels[level] || level} · ${score}/100`;
+}
+
+function renderRisks(risks) {
+  const badge = document.getElementById("risk-badge");
+  badge.textContent = riskLevelLabel(risks.level, risks.score);
+  badge.className = riskBadgeClass(risks.level);
+
+  const alertsEl = document.getElementById("risk-alerts");
+  alertsEl.innerHTML = risks.alerts
+    .map(
+      (a) => `
+    <div class="risk-alert risk-alert-${a.level}">
+      <p class="risk-alert-title">${a.title}</p>
+      <p class="risk-alert-msg">${a.message}</p>
+    </div>
+  `
+    )
+    .join("");
+
+  const sectorsBlock = document.getElementById("risk-sectors");
+  const sectorsList = document.getElementById("risk-sectors-list");
+  const knownSectors = (risks.sectors || []).filter((s) => s.sector !== "Неизвестно");
+
+  if (knownSectors.length) {
+    sectorsBlock.classList.remove("hidden");
+    sectorsList.innerHTML = knownSectors
+      .slice(0, 5)
+      .map(
+        (s) => `
+      <div class="sector-bar-row">
+        <span class="truncate" style="color: var(--text-muted);" title="${s.sector}">${s.sector}</span>
+        <div class="sector-bar-track">
+          <div class="sector-bar-fill" style="width: ${Math.min(s.weight_pct, 100)}%;"></div>
+        </div>
+        <span class="text-right font-medium">${s.weight_pct.toFixed(0)}%</span>
+      </div>
+    `
+      )
+      .join("");
+  } else {
+    sectorsBlock.classList.add("hidden");
+  }
+}
+
+async function loadBenchmark() {
+  if (!hasPortfolio) return;
+
+  const summaryEl = document.getElementById("benchmark-summary");
+  const alphaEl = document.getElementById("benchmark-alpha");
+  summaryEl.textContent = "Загрузка...";
+  alphaEl.textContent = "—";
+
+  try {
+    const data = await apiFetch(
+      `/api/portfolio/benchmark?benchmark=${encodeURIComponent(benchmarkState.benchmark)}&range=${encodeURIComponent(benchmarkState.range)}`,
+      { timeoutMs: 60000 }
+    );
+
+    const sign = (v) => (v >= 0 ? "+" : "");
+    summaryEl.textContent = `Портфель ${sign(data.portfolio_return)}${data.portfolio_return.toFixed(1)}% · ${data.benchmark} ${sign(data.benchmark_return)}${data.benchmark_return.toFixed(1)}%`;
+
+    const alphaSign = data.alpha >= 0 ? "+" : "";
+    alphaEl.textContent = `Альфа ${alphaSign}${data.alpha.toFixed(2)}% · просадка ${data.max_drawdown_pct.toFixed(1)}%`;
+    alphaEl.className = `chart-change ${data.alpha >= 0 ? "positive" : "negative"} mb-2`;
+
+    createBenchmarkChart(document.getElementById("benchmark-chart"), data);
+  } catch (err) {
+    summaryEl.textContent = "Бенчмарк недоступен";
+    alphaEl.textContent = err.message;
+    alphaEl.className = "chart-change mb-2";
+    destroyChart("benchmark");
+  }
+}
+
+async function loadRisks() {
+  if (!hasPortfolio) return;
+
+  try {
+    const risks = await apiFetch(
+      `/api/portfolio/risks?range=${encodeURIComponent(benchmarkState.range)}`,
+      { timeoutMs: 60000 }
+    );
+    renderRisks(risks);
+  } catch (err) {
+    document.getElementById("risk-alerts").innerHTML = `<p class="text-red-400 text-sm">${err.message}</p>`;
+  }
+}
+
+function initBenchmarkControls() {
+  document.querySelectorAll(".benchmark-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".benchmark-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      benchmarkState.benchmark = btn.dataset.benchmark;
+      loadBenchmark();
+    });
+  });
+
+  document.querySelectorAll(".benchmark-range").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".benchmark-range").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      benchmarkState.range = btn.dataset.range;
+      loadBenchmark();
+      loadRisks();
+    });
+  });
+}
+
+initBenchmarkControls();
+
 async function loadDashboard() {
   const [user, stats] = await Promise.all([
     apiFetch("/api/auth/me"),
@@ -75,6 +196,17 @@ async function loadDashboard() {
   pnlEl.className = `stat-value ${pnlClass(stats.total_pnl)}`;
 
   document.getElementById("holdings-count").textContent = stats.holdings_count;
+
+  hasPortfolio = stats.holdings_count > 0;
+  const analyticsRow = document.getElementById("analytics-row");
+
+  if (hasPortfolio) {
+    analyticsRow.classList.remove("hidden");
+    loadBenchmark();
+    loadRisks();
+  } else {
+    analyticsRow.classList.add("hidden");
+  }
 
   const chartsRow = document.getElementById("charts-row");
   const chartHoldings = stats.chart_holdings?.length

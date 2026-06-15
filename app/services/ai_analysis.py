@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.config import settings
-from app.schemas import CompanyProfile, PortfolioAnalysis, StockAnalysis, StockQuote
+from app.schemas import CompanyProfile, MarketContext, PortfolioAnalysis, StockAnalysis, StockQuote
+from app.services.market_context import get_market_context
 from app.services.stock_service import StockService, stock_service
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ Rules:
   2) State current price, position in the 52-week range, and distance to its boundaries.
   3) State the main limitation or risk.
   4) State exact supplied price levels that would improve or worsen the view.
+- If news or earnings data is supplied, reference specific headlines or report dates; do not invent events.
+- If a previous AI rating is supplied, explain whether the new view is stronger, weaker, or unchanged and why.
 Never claim certainty, invent missing data, or mention API keys/data-provider setup."""
 
 
@@ -60,19 +63,32 @@ class AIAnalysisService:
             )
         return self._client
 
-    def analyze(self, ticker: str) -> StockAnalysis:
+    def analyze(
+        self,
+        ticker: str,
+        context: MarketContext | None = None,
+        previous_rating: int | None = None,
+    ) -> StockAnalysis:
         profile = self.stock_service.get_company_profile(ticker)
         try:
             quote = self.stock_service.get_quote(ticker)
         except Exception as exc:
             logger.warning("Quote context unavailable for %s: %s", ticker, exc)
             quote = None
-        prompt = self._build_prompt(profile, quote)
+
+        if context is None:
+            try:
+                context = get_market_context(ticker)
+            except Exception as exc:
+                logger.warning("Market context unavailable for %s: %s", ticker, exc)
+                context = MarketContext(ticker=ticker.upper(), news=[], earnings=[])
+
+        prompt = self._build_prompt(profile, quote, context, previous_rating)
 
         if self._yandex_configured():
             try:
                 data = self._call_yandex(prompt, SYSTEM_PROMPT)
-                return self._parse_response(profile, data, ai_powered=True)
+                return self._parse_response(profile, data, ai_powered=True, context=context, previous_rating=previous_rating)
             except Exception as exc:
                 logger.warning("YandexGPT analysis failed, trying fallback: %s", exc)
 
@@ -80,15 +96,21 @@ class AIAnalysisService:
         if client:
             try:
                 data = self._call_openai(client, prompt)
-                return self._parse_response(profile, data, ai_powered=True)
+                return self._parse_response(profile, data, ai_powered=True, context=context, previous_rating=previous_rating)
             except HTTPException:
                 raise
             except Exception as exc:
                 logger.warning("OpenAI analysis failed, using fallback: %s", exc)
 
-        return self._rule_based_analysis(profile)
+        return self._rule_based_analysis(profile, context, previous_rating)
 
-    def _build_prompt(self, profile: CompanyProfile, quote: StockQuote | None = None) -> str:
+    def _build_prompt(
+        self,
+        profile: CompanyProfile,
+        quote: StockQuote | None = None,
+        context: MarketContext | None = None,
+        previous_rating: int | None = None,
+    ) -> str:
         f = profile.financials
         market_cap = f"{f.market_cap:,.0f}" if f.market_cap else "N/A"
         pe = f"{f.pe_ratio:.2f}" if f.pe_ratio is not None else "N/A"
@@ -124,6 +146,43 @@ class AIAnalysisService:
                     f"улучшение выше {high:.2f} {quote.currency}"
                 )
 
+        news_block = "Нет свежих новостей в данных."
+        earnings_block = "Нет данных по отчётности."
+        if context:
+            if context.news:
+                lines = []
+                for item in context.news[:5]:
+                    dt = item.published_at.strftime("%Y-%m-%d")
+                    lines.append(f"- [{dt}] {item.headline} ({item.source})")
+                    if item.summary:
+                        lines.append(f"  {item.summary[:200]}")
+                news_block = "\n".join(lines)
+            if context.earnings:
+                elines = []
+                for evt in context.earnings[:3]:
+                    parts = [evt.date]
+                    if evt.period:
+                        parts.append(f"period {evt.period}")
+                    if evt.eps_actual is not None:
+                        parts.append(f"EPS fact {evt.eps_actual}")
+                    if evt.eps_estimate is not None:
+                        parts.append(f"EPS est {evt.eps_estimate}")
+                    if evt.surprise_pct is not None:
+                        parts.append(f"surprise {evt.surprise_pct:+.1f}%")
+                    elines.append("- " + ", ".join(parts))
+                earnings_block = "\n".join(elines)
+            if context.upcoming_earnings:
+                ue = context.upcoming_earnings
+                earnings_block += f"\n- Ближайший отчёт: {ue.date}"
+                if ue.eps_estimate is not None:
+                    earnings_block += f", EPS consensus {ue.eps_estimate}"
+
+        prev_rating_line = (
+            f"Предыдущий AI-рейтинг по этому тикеру: {previous_rating}/10"
+            if previous_rating is not None
+            else "Предыдущий AI-рейтинг: нет данных"
+        )
+
         return f"""Проанализируй акцию для частного инвестора.
 
 Тикер: {profile.ticker}
@@ -142,12 +201,20 @@ class AIAnalysisService:
 - Положение цены внутри диапазона: {range_position}
 - Интерпретация диапазона и контрольные уровни: {range_context}
 - Доступно фундаментальных метрик: {available_fundamentals} из 4
+- {prev_rating_line}
+
+Последние новости:
+{news_block}
+
+Отчётность / earnings:
+{earnings_block}
 
 Описание компании:
 {profile.description}
 
 Отделяй наблюдаемые данные от предположений. Если фундаментальных метрик меньше двух,
 не оценивай качество бизнеса и не предлагай уверенную покупку или продажу.
+Учитывай новости и earnings только если они перечислены выше.
 """
 
     def _call_openai(self, client: OpenAI, prompt: str) -> dict:
@@ -207,7 +274,12 @@ class AIAnalysisService:
             content = content.removesuffix("```").strip()
         return json.loads(content)
 
-    def _rule_based_analysis(self, profile: CompanyProfile) -> StockAnalysis:
+    def _rule_based_analysis(
+        self,
+        profile: CompanyProfile,
+        context: MarketContext | None = None,
+        previous_rating: int | None = None,
+    ) -> StockAnalysis:
         f = profile.financials
         strengths: list[str] = []
         weaknesses: list[str] = []
@@ -231,6 +303,12 @@ class AIAnalysisService:
 
         if profile.sector:
             strengths.append(f"Сектор: {profile.sector}")
+
+        if context and context.upcoming_earnings:
+            ue = context.upcoming_earnings
+            risks.append(f"Ближайший earnings {ue.date} — возможна повышенная волатильность")
+        if context and context.news:
+            risks.append(f"На фоне {len(context.news)} свежих новостей — следите за sentiment")
 
         if not strengths:
             strengths.append(f"Цена ${f.current_price:.2f} доступна, но фундаментальные метрики отсутствуют")
@@ -288,10 +366,19 @@ class AIAnalysisService:
             investment_conclusion=conclusion,
             rating=rating,
             ai_powered=False,
+            news=context.news if context else [],
+            earnings=context.earnings if context else [],
+            upcoming_earnings=context.upcoming_earnings if context else None,
+            previous_rating=previous_rating,
         )
 
     def _parse_response(
-        self, profile: CompanyProfile, data: dict, ai_powered: bool
+        self,
+        profile: CompanyProfile,
+        data: dict,
+        ai_powered: bool,
+        context: MarketContext | None = None,
+        previous_rating: int | None = None,
     ) -> StockAnalysis:
         rating = data.get("rating", 5)
         try:
@@ -311,6 +398,10 @@ class AIAnalysisService:
             investment_conclusion=str(data.get("investment_conclusion") or ""),
             rating=rating,
             ai_powered=ai_powered,
+            news=context.news if context else [],
+            earnings=context.earnings if context else [],
+            upcoming_earnings=context.upcoming_earnings if context else None,
+            previous_rating=previous_rating,
         )
 
     @staticmethod
