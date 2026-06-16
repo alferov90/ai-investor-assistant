@@ -392,11 +392,8 @@ def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
             logger.warning("%s failed for %s: %s", name, symbol, exc)
 
     raise HTTPException(
-        status_code=status.HTTP_502_BAD_GATEWAY,
-        detail=(
-            f"Unable to fetch data for {symbol}. "
-            "Add TWELVE_DATA_API_KEY, FINNHUB_API_KEY, or YAHOO_PROXY_URL to .env"
-        ),
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Не удалось найти данные по тикеру {symbol}. Проверьте символ акции и попробуйте снова.",
     )
 
 

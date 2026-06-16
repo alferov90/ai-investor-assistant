@@ -96,6 +96,21 @@ function normalizeUrl(value) {
   }
 }
 
+function friendlyAnalysisError(error, ticker) {
+  const message = String(error?.message || "");
+  if (
+    message.includes("Unable to fetch data") ||
+    message.includes("No price data") ||
+    message.includes("Не удалось найти данные по тикеру")
+  ) {
+    return `Не нашел данные по тикеру ${ticker}. Проверьте написание: например, Apple — AAPL, Microsoft — MSFT, Nvidia — NVDA.`;
+  }
+  if (message.includes("Unable to fetch price history")) {
+    return "Не удалось загрузить график цены. Попробуйте повторить запрос чуть позже.";
+  }
+  return message || "Не удалось выполнить анализ. Попробуйте еще раз.";
+}
+
 function renderConclusion(text) {
   const el = document.getElementById("investment-conclusion");
   const parts = splitConclusion(text);
@@ -327,7 +342,7 @@ async function analyze(ticker) {
     });
     renderAnalysis(analysis);
   } catch (err) {
-    errorEl.textContent = err.message;
+    errorEl.textContent = friendlyAnalysisError(err, ticker);
     errorEl.classList.remove("hidden");
   } finally {
     loadingEl.classList.add("hidden");
