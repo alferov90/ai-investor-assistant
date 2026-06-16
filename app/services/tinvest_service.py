@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException, status
@@ -26,12 +27,30 @@ class TInvestPosition:
     currency: str
 
 
+@dataclass
+class TInvestInstrument:
+    ticker: str
+    name: str
+    instrument_id: str
+    currency: str
+    lot: int
+    exchange: str = ""
+    trading_status: str = ""
+
+
 def _decimal_from_api(value: dict | None) -> Decimal:
     if not value:
         return Decimal("0")
     units = Decimal(str(value.get("units") or 0))
     nano = Decimal(str(value.get("nano") or 0)) / Decimal("1000000000")
     return units + nano
+
+
+def _quotation_from_decimal(value: Decimal) -> dict:
+    quantized = value.quantize(Decimal("0.000000001"))
+    units = int(quantized)
+    nano = int((quantized - Decimal(units)) * Decimal("1000000000"))
+    return {"units": str(units), "nano": nano}
 
 
 def _friendly_error(exc: Exception) -> HTTPException:
@@ -138,6 +157,38 @@ class TInvestService:
 
         return ticker.upper(), name, currency.upper()
 
+    def find_instrument(self, token: str, ticker: str, sandbox: bool = False) -> TInvestInstrument:
+        ticker = ticker.strip().upper()
+        data = self._call(
+            token,
+            "InstrumentsService",
+            "FindInstrument",
+            {"query": ticker},
+            sandbox,
+        )
+        candidates = data.get("instruments", [])
+        exact = [
+            item for item in candidates
+            if (item.get("ticker") or "").upper() == ticker and item.get("instrumentUid")
+        ]
+        pool = exact or [item for item in candidates if item.get("instrumentUid")]
+        if not pool:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"T-Invest не нашел инструмент {ticker}.",
+            )
+
+        item = pool[0]
+        return TInvestInstrument(
+            ticker=(item.get("ticker") or ticker).upper(),
+            name=item.get("name") or ticker,
+            instrument_id=item.get("instrumentUid") or item.get("figi") or "",
+            currency=(item.get("currency") or "rub").upper(),
+            lot=int(item.get("lot") or 1),
+            exchange=item.get("exchange") or "",
+            trading_status=item.get("tradingStatus") or "",
+        )
+
     def get_portfolio(
         self, token: str, account_id: str, sandbox: bool = False
     ) -> list[TInvestPosition]:
@@ -174,6 +225,51 @@ class TInvestService:
             )
 
         return positions
+
+    def place_limit_order(
+        self,
+        token: str,
+        *,
+        account_id: str,
+        instrument_id: str,
+        direction: str,
+        lots: int,
+        limit_price: Decimal,
+        sandbox: bool = False,
+    ) -> tuple[str, dict]:
+        request_id = str(uuid4())
+        payload = {
+            "quantity": str(lots),
+            "price": _quotation_from_decimal(limit_price),
+            "direction": "ORDER_DIRECTION_BUY" if direction == "buy" else "ORDER_DIRECTION_SELL",
+            "accountId": account_id,
+            "orderType": "ORDER_TYPE_LIMIT",
+            "orderId": request_id,
+            "instrumentId": instrument_id,
+        }
+        data = self._call(token, "OrdersService", "PostOrder", payload, sandbox)
+        return request_id, data
+
+    def list_active_orders(self, token: str, account_id: str, sandbox: bool = False) -> list[dict]:
+        data = self._call(
+            token,
+            "OrdersService",
+            "GetOrders",
+            {"accountId": account_id},
+            sandbox,
+        )
+        return data.get("orders", [])
+
+    def cancel_order(
+        self, token: str, account_id: str, order_id: str, sandbox: bool = False
+    ) -> dict:
+        return self._call(
+            token,
+            "OrdersService",
+            "CancelOrder",
+            {"accountId": account_id, "orderId": order_id},
+            sandbox,
+        )
 
 
 tinvest_service = TInvestService()

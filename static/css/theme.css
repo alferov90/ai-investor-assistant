@@ -830,8 +830,53 @@ select.input-field option {
   background: rgba(15, 23, 42, 0.35);
 }
 
+.order-form-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.8fr 0.65fr 0.8fr auto;
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.broker-order-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(260px, 0.9fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.broker-confirm-box {
+  padding: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.broker-confirm-box code {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.broker-warnings {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 @media (max-width: 900px) {
   .broker-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-form-grid,
+  .broker-order-preview {
     grid-template-columns: 1fr;
   }
 

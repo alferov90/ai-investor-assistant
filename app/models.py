@@ -51,6 +51,9 @@ class User(Base):
     broker_connections: Mapped[list["BrokerConnection"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    broker_orders: Mapped[list["BrokerOrder"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
 
 
 class PortfolioHolding(Base):
@@ -189,3 +192,38 @@ class BrokerConnection(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="broker_connections")
+
+
+class BrokerOrder(Base):
+    __tablename__ = "broker_orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    connection_id: Mapped[int] = mapped_column(
+        ForeignKey("broker_connections.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32), default="tinvest")
+    account_id: Mapped[str] = mapped_column(String(128), index=True)
+    order_id: Mapped[str] = mapped_column(String(128), index=True)
+    request_id: Mapped[str] = mapped_column(String(64), index=True)
+    ticker: Mapped[str] = mapped_column(String(32), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128))
+    direction: Mapped[str] = mapped_column(String(8))
+    order_type: Mapped[str] = mapped_column(String(16), default="limit")
+    lots_requested: Mapped[int] = mapped_column(Integer)
+    lots_executed: Mapped[int] = mapped_column(Integer, default=0)
+    limit_price: Mapped[Decimal] = mapped_column(Numeric(18, 9), default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    status: Mapped[str] = mapped_column(String(64), default="")
+    message: Mapped[str] = mapped_column(String(500), default="")
+    sandbox: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="broker_orders")

@@ -487,3 +487,81 @@ class BrokerSyncResult(BaseModel):
     skipped: int
     positions: list[BrokerSyncPosition]
     message: str
+
+
+class BrokerOrderPreviewRequest(BaseModel):
+    connection_id: int
+    ticker: str = Field(min_length=1, max_length=32)
+    direction: str
+    lots: int = Field(gt=0, le=10_000)
+    limit_price: Decimal = Field(gt=0)
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("direction")
+    @classmethod
+    def validate_direction(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"buy", "sell"}:
+            raise ValueError("direction must be buy or sell")
+        return normalized
+
+
+class BrokerOrderPlaceRequest(BrokerOrderPreviewRequest):
+    confirm_text: str = Field(min_length=1, max_length=80)
+
+
+class BrokerInstrumentPreview(BaseModel):
+    ticker: str
+    name: str
+    instrument_id: str
+    currency: str = "RUB"
+    lot: int = 1
+    exchange: str = ""
+    trading_status: str = ""
+
+
+class BrokerOrderPreview(BaseModel):
+    connection_id: int
+    account_id: str
+    sandbox: bool
+    instrument: BrokerInstrumentPreview
+    direction: str
+    lots: int
+    limit_price: float
+    estimated_amount: float
+    currency: str
+    confirm_text: str
+    warnings: list[str] = []
+
+
+class BrokerOrderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    connection_id: int
+    account_id: str
+    order_id: str
+    request_id: str
+    ticker: str
+    instrument_id: str
+    direction: str
+    order_type: str
+    lots_requested: int
+    lots_executed: int
+    limit_price: Decimal
+    currency: str
+    status: str
+    message: str
+    sandbox: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class BrokerOrderPlaceResult(BaseModel):
+    order: BrokerOrderRead
+    provider_response: dict
+    message: str

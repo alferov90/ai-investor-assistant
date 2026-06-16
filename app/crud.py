@@ -479,3 +479,82 @@ def mark_broker_sync_error(
 def delete_broker_connection(db: Session, connection: models.BrokerConnection) -> None:
     db.delete(connection)
     db.commit()
+
+
+def list_broker_orders(
+    db: Session, user_id: int, limit: int = 50
+) -> list[models.BrokerOrder]:
+    return (
+        db.query(models.BrokerOrder)
+        .filter(models.BrokerOrder.user_id == user_id)
+        .order_by(models.BrokerOrder.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_broker_order(db: Session, user_id: int, order_id: int) -> models.BrokerOrder | None:
+    return (
+        db.query(models.BrokerOrder)
+        .filter(models.BrokerOrder.id == order_id, models.BrokerOrder.user_id == user_id)
+        .first()
+    )
+
+
+def create_broker_order(
+    db: Session,
+    user_id: int,
+    connection: models.BrokerConnection,
+    *,
+    order_id: str,
+    request_id: str,
+    ticker: str,
+    instrument_id: str,
+    direction: str,
+    lots_requested: int,
+    lots_executed: int,
+    limit_price,
+    currency: str,
+    status: str,
+    message: str = "",
+) -> models.BrokerOrder:
+    order = models.BrokerOrder(
+        user_id=user_id,
+        connection_id=connection.id,
+        provider=connection.provider,
+        account_id=connection.account_id,
+        order_id=order_id,
+        request_id=request_id,
+        ticker=ticker,
+        instrument_id=instrument_id,
+        direction=direction,
+        lots_requested=lots_requested,
+        lots_executed=lots_executed,
+        limit_price=limit_price,
+        currency=currency,
+        status=status,
+        message=message,
+        sandbox=connection.sandbox,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+def update_broker_order_status(
+    db: Session,
+    order: models.BrokerOrder,
+    *,
+    status: str,
+    lots_executed: int | None = None,
+    message: str | None = None,
+) -> models.BrokerOrder:
+    order.status = status
+    if lots_executed is not None:
+        order.lots_executed = lots_executed
+    if message is not None:
+        order.message = message
+    db.commit()
+    db.refresh(order)
+    return order

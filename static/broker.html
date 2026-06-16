@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Брокер — AI Investor</title>
-  <link rel="stylesheet" href="/static/css/theme.css?v=7">
+  <link rel="stylesheet" href="/static/css/theme.css?v=8">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="app-body">
@@ -21,7 +21,7 @@
       <div class="page-header">
         <div>
           <h1 class="page-title">Брокер</h1>
-          <p class="page-subtitle">Подключение T-Invest для чтения счетов и синхронизации портфеля</p>
+          <p class="page-subtitle">Подключение T-Invest, синхронизация портфеля и лимитные заявки</p>
         </div>
         <a href="https://www.tinkoff.ru/invest/settings/" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Выпустить токен</a>
       </div>
@@ -57,8 +57,8 @@
           <h2 class="chart-title mb-2">Как это работает</h2>
           <div class="daily-insights">
             <div class="daily-insight ok">
-              <p class="daily-insight-title">Без сделок</p>
-              <p class="daily-insight-msg">На этом этапе сайт только читает счета и позиции. Торговля не включена.</p>
+              <p class="daily-insight-title">Только лимитные заявки</p>
+              <p class="daily-insight-msg">Рыночные заявки не используются. Перед отправкой нужно вручную подтвердить текст заявки.</p>
             </div>
             <div class="daily-insight info">
               <p class="daily-insight-title">Синхронизация</p>
@@ -81,12 +81,63 @@
           <p class="text-sm" style="color: var(--text-muted);">Загрузка...</p>
         </div>
       </section>
+
+      <section class="glass-card glass-card-padded mt-8">
+        <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
+          <div>
+            <h2 class="chart-title">Новая лимитная заявка</h2>
+            <p class="text-sm mt-1" style="color: var(--text-muted);">Количество указывается в лотах. Сначала получите предпросмотр, затем подтвердите отправку.</p>
+          </div>
+          <span class="badge risk-medium">Реальные сделки требуют full-access токен</span>
+        </div>
+
+        <form id="order-form" class="order-form-grid">
+          <div>
+            <label class="form-label">Счёт</label>
+            <select id="order-connection" class="input-field" required></select>
+          </div>
+          <div>
+            <label class="form-label">Тикер</label>
+            <input id="order-ticker" class="input-field uppercase" required placeholder="SBER">
+          </div>
+          <div>
+            <label class="form-label">Направление</label>
+            <select id="order-direction" class="input-field">
+              <option value="buy">Купить</option>
+              <option value="sell">Продать</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Лоты</label>
+            <input id="order-lots" class="input-field" type="number" min="1" step="1" required value="1">
+          </div>
+          <div>
+            <label class="form-label">Лимитная цена</label>
+            <input id="order-price" class="input-field" type="number" min="0.0001" step="any" required placeholder="100">
+          </div>
+          <button type="submit" class="btn btn-primary">Проверить заявку</button>
+        </form>
+
+        <div id="order-preview" class="hidden broker-order-preview mt-5"></div>
+        <p id="order-error" class="text-negative text-sm mt-4"></p>
+        <p id="order-status" class="text-sm mt-4" style="color: var(--text-muted);"></p>
+      </section>
+
+      <section class="glass-card glass-card-padded mt-8">
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-4">
+          <h2 class="chart-title">История заявок</h2>
+          <button id="btn-refresh-orders" class="btn btn-secondary btn-sm">Обновить</button>
+        </div>
+        <div id="broker-orders" class="space-y-3">
+          <p class="text-sm" style="color: var(--text-muted);">Загрузка...</p>
+        </div>
+      </section>
     </main>
   </div>
 
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
-  <script src="/static/js/broker.js?v=1"></script>
+  <script src="/static/js/broker.js?v=2"></script>
   <script>injectLogo("app-logo"); renderNav("/broker");</script>
 </body>
 </html>
