@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — AI Investor</title>
-  <link rel="stylesheet" href="/static/css/theme.css">
+  <link rel="stylesheet" href="/static/css/theme.css?v=6">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="app-body">
@@ -31,6 +31,18 @@
       </div>
 
       <div id="portfolio-ai-result" class="hidden mb-8 glass-card glass-card-padded" style="border-color: rgba(45,212,191,0.25);"></div>
+
+      <div id="daily-summary" class="hidden glass-card glass-card-padded mb-8">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <h2 class="chart-title">Сегодня по портфелю</h2>
+            <p class="text-sm mt-1" style="color: var(--text-muted);">Короткая сводка без лишнего шума</p>
+          </div>
+          <a href="/dividends" class="link-accent text-sm">Дивиденды →</a>
+        </div>
+        <div id="daily-summary-grid" class="daily-summary-grid"></div>
+        <div id="daily-insights" class="daily-insights mt-4"></div>
+      </div>
 
       <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="stat-card">
@@ -136,7 +148,7 @@
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
   <script src="/static/js/charts.js?v=2"></script>
-  <script src="/static/js/dashboard.js?v=7"></script>
+  <script src="/static/js/dashboard.js?v=8"></script>
   <script>injectLogo("app-logo"); renderNav("/dashboard");</script>
 </body>
 </html>

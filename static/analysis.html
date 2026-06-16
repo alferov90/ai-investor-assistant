@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Анализ — AI Investor</title>
-  <link rel="stylesheet" href="/static/css/theme.css?v=4">
+  <link rel="stylesheet" href="/static/css/theme.css?v=6">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="app-body">
@@ -51,6 +51,25 @@
           <div id="stock-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm"></div>
         </div>
 
+        <div class="glass-card glass-card-padded">
+          <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+            <h3 class="chart-title">Моя идея</h3>
+            <span class="text-xs" style="color: var(--text-muted);">сохраняется в этом браузере</span>
+          </div>
+          <textarea id="personal-thesis" rows="3" class="input-field" placeholder="Почему смотрю акцию, уровень входа, риск, горизонт..."></textarea>
+          <div class="flex items-center gap-3 mt-3 flex-wrap">
+            <select id="personal-decision" class="input-field" style="max-width: 220px;">
+              <option value="">Решение не выбрано</option>
+              <option value="watch">Наблюдать</option>
+              <option value="buy">Купить/добавить</option>
+              <option value="hold">Держать</option>
+              <option value="avoid">Избегать</option>
+            </select>
+            <button id="save-thesis" type="button" class="btn btn-secondary btn-sm">Сохранить идею</button>
+            <span id="thesis-status" class="text-xs" style="color: var(--text-muted);"></span>
+          </div>
+        </div>
+
         <div id="charts-section" class="hidden chart-grid-analysis">
           <div class="glass-card glass-card-padded">
             <div class="chart-header">
@@ -95,6 +114,20 @@
         </div>
 
         <div id="analysis-section" class="hidden space-y-6">
+          <div id="analysis-meta" class="analysis-meta-grid hidden">
+            <div class="glass-card glass-card-padded">
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <h3 class="chart-title">Качество данных</h3>
+                <span id="data-quality-badge" class="risk-badge risk-ok">—</span>
+              </div>
+              <p id="data-quality-message" class="text-sm" style="color: var(--text-muted);">—</p>
+              <div id="data-quality-pills" class="quality-pills mt-3"></div>
+            </div>
+            <div class="glass-card glass-card-padded">
+              <h3 class="chart-title mb-3">Что изменилось</h3>
+              <p id="analysis-delta" class="text-sm" style="color: var(--text-muted);">—</p>
+            </div>
+          </div>
           <div class="grid md:grid-cols-3 gap-6">
             <div class="glass-card glass-card-padded">
               <h3 class="font-display font-bold mb-3 text-positive">Сильные стороны</h3>
@@ -124,7 +157,7 @@
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
   <script src="/static/js/charts.js?v=1"></script>
-  <script src="/static/js/analysis.js?v=5"></script>
+  <script src="/static/js/analysis.js?v=6"></script>
   <script>injectLogo("app-logo"); renderNav("/analysis");</script>
 </body>
 </html>

@@ -28,11 +28,46 @@ function initAnalysisPage() {
     const ticker = document.getElementById("ticker").value.trim().toUpperCase();
     if (ticker) analyze(ticker);
   });
+
+  document.getElementById("save-thesis")?.addEventListener("click", savePersonalThesis);
 }
 
 let currentTicker = null;
 
 document.addEventListener("DOMContentLoaded", initAnalysisPage);
+
+function thesisKey(ticker) {
+  return `investor_thesis_${String(ticker || "").toUpperCase()}`;
+}
+
+function loadPersonalThesis(ticker) {
+  const raw = localStorage.getItem(thesisKey(ticker));
+  let data = { text: "", decision: "" };
+  if (raw) {
+    try {
+      data = { ...data, ...JSON.parse(raw) };
+    } catch {
+      data.text = raw;
+    }
+  }
+  document.getElementById("personal-thesis").value = data.text || "";
+  document.getElementById("personal-decision").value = data.decision || "";
+  document.getElementById("thesis-status").textContent = data.text ? "Идея загружена" : "";
+}
+
+function savePersonalThesis() {
+  if (!currentTicker) return;
+  const text = document.getElementById("personal-thesis").value.trim();
+  const decision = document.getElementById("personal-decision").value;
+  const status = document.getElementById("thesis-status");
+  if (!text && !decision) {
+    localStorage.removeItem(thesisKey(currentTicker));
+    status.textContent = "Идея очищена";
+    return;
+  }
+  localStorage.setItem(thesisKey(currentTicker), JSON.stringify({ text, decision }));
+  status.textContent = "Идея сохранена";
+}
 
 function renderList(id, items) {
   const el = document.getElementById(id);
@@ -154,6 +189,49 @@ function renderConclusion(text) {
   `;
 }
 
+function qualityBadgeClass(level) {
+  if (level === "high") return "risk-badge risk-ok";
+  if (level === "medium") return "risk-badge risk-medium";
+  return "risk-badge risk-high";
+}
+
+function qualityLabel(level, score) {
+  const labels = { high: "Высокое", medium: "Среднее", low: "Низкое" };
+  return `${labels[level] || "Данные"} · ${score}/100`;
+}
+
+function renderAnalysisMeta(analysis) {
+  const meta = document.getElementById("analysis-meta");
+  const quality = analysis.data_quality;
+  const delta = analysis.analysis_delta;
+
+  if (!quality && !delta) {
+    meta.classList.add("hidden");
+    return;
+  }
+
+  meta.classList.remove("hidden");
+
+  if (quality) {
+    const badge = document.getElementById("data-quality-badge");
+    badge.textContent = qualityLabel(quality.level, quality.score);
+    badge.className = qualityBadgeClass(quality.level);
+    document.getElementById("data-quality-message").textContent = quality.message;
+
+    const available = (quality.available || [])
+      .map((item) => `<span class="quality-pill quality-pill-ok">${escapeHtml(item)}</span>`)
+      .join("");
+    const missing = (quality.missing || [])
+      .map((item) => `<span class="quality-pill quality-pill-missing">${escapeHtml(item)}</span>`)
+      .join("");
+    document.getElementById("data-quality-pills").innerHTML = available + missing;
+  }
+
+  if (delta) {
+    document.getElementById("analysis-delta").textContent = delta.message;
+  }
+}
+
 function renderStockMeta(stock) {
   document.getElementById("stock-name").textContent = stock.name;
   document.getElementById("stock-ticker").textContent = stock.ticker;
@@ -193,6 +271,7 @@ function renderAnalysis(analysis) {
   renderList("weaknesses", analysis.weaknesses);
   renderList("risks", analysis.risks);
   renderConclusion(analysis.investment_conclusion);
+  renderAnalysisMeta(analysis);
 
   const badge = document.getElementById("ai-badge");
   if (analysis.ai_powered) {
@@ -364,6 +443,7 @@ async function analyze(ticker) {
   errorEl.classList.add("hidden");
   resultEl.classList.add("hidden");
   analysisSection.classList.add("hidden");
+  document.getElementById("analysis-meta")?.classList.add("hidden");
   chartsSection.classList.add("hidden");
   contextSection.classList.add("hidden");
   destroyChart("price");
@@ -374,6 +454,7 @@ async function analyze(ticker) {
   try {
     const stock = await apiFetch(`/api/stocks/${encodeURIComponent(ticker)}`, { timeoutMs: 30000 });
     renderStockMeta(stock);
+    loadPersonalThesis(ticker);
     resultEl.classList.remove("hidden");
     chartsSection.classList.remove("hidden");
 

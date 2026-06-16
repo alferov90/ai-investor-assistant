@@ -10,6 +10,7 @@ from app.services.ai_analysis import ai_analysis_service
 from app.services.dividend_service import get_portfolio_dividends
 from app.services.fx_service import get_usd_rub_rate
 from app.services.portfolio_analytics import compute_benchmark, compute_risks
+from app.services.portfolio_summary import build_daily_summary
 from app.services.portfolio_valuation import enrich_holdings
 from app.services.stock_service import fetch_quotes
 
@@ -78,6 +79,14 @@ def portfolio_dividends(
     current_user: User = Depends(get_current_user),
 ):
     return get_portfolio_dividends(db, current_user.id)
+
+
+@router.get("/daily-summary", response_model=schemas.PortfolioDailySummary)
+def portfolio_daily_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return build_daily_summary(db, current_user.id)
 
 
 @router.get("/dashboard", response_model=schemas.DashboardStats)

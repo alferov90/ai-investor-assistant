@@ -34,6 +34,8 @@ async def list_watchlist(
                 created_at=item.created_at,
                 current_price=q.price if q else None,
                 change_percent=q.change_percent if q else None,
+                currency=q.currency if q else "USD",
+                market=q.market if q else "us",
             )
         )
     return result

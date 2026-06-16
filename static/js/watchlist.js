@@ -4,6 +4,37 @@ renderNav("/watchlist");
 const modal = document.getElementById("modal");
 const listEl = document.getElementById("list");
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderIdeaNotes(notes) {
+  const text = String(notes || "").trim();
+  if (!text) {
+    return `<p class="text-sm" style="color: var(--text-muted);">Причина наблюдения не указана.</p>`;
+  }
+  const chunks = text
+    .split(/[;\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (!chunks.length) {
+    return `<p class="text-sm" style="color: var(--text-muted);">${escapeHtml(text)}</p>`;
+  }
+
+  return `
+    <div class="quality-pills mt-2">
+      ${chunks.map((part) => `<span class="quality-pill">${escapeHtml(part)}</span>`).join("")}
+    </div>
+  `;
+}
+
 document.getElementById("btn-add").onclick = () => {
   modal.classList.remove("hidden");
   modal.classList.add("flex");
@@ -47,19 +78,19 @@ async function load() {
       (i) => `
     <div class="glass-card glass-card-padded card-with-sparkline">
       <div class="card-body">
-        <p class="font-display font-semibold text-lg">${i.ticker}</p>
-        ${i.notes ? `<p class="text-sm" style="color: var(--text-muted);">${i.notes}</p>` : ""}
+        <p class="font-display font-semibold text-lg">${escapeHtml(i.ticker)}</p>
+        ${renderIdeaNotes(i.notes)}
         ${
           i.current_price != null
-            ? `<p class="text-sm mt-1 font-medium">${formatMoney(i.current_price)} <span class="${pnlClass(i.change_percent)}">${formatPercent(i.change_percent || 0)}</span></p>`
+            ? `<p class="text-sm mt-1 font-medium">${formatMoney(i.current_price, i.currency || "USD")} <span class="${pnlClass(i.change_percent)}">${formatPercent(i.change_percent || 0)}</span></p>`
             : `<p class="text-sm mt-1" style="color: var(--text-muted);">Загрузка цены...</p>`
         }
       </div>
       <div class="sparkline-wrap">
-        <canvas data-sparkline="${i.ticker}" aria-hidden="true"></canvas>
+        <canvas data-sparkline="${escapeHtml(i.ticker)}" aria-hidden="true"></canvas>
       </div>
       <div class="card-actions">
-        <a href="/analysis?ticker=${i.ticker}" class="link-accent text-sm">Анализ</a>
+        <a href="/analysis?ticker=${encodeURIComponent(i.ticker)}" class="link-accent text-sm">Анализ</a>
         <button data-id="${i.id}" class="delete-btn text-negative text-sm">Удалить</button>
       </div>
     </div>

@@ -4,6 +4,15 @@ renderNav("/dashboard");
 let benchmarkState = { benchmark: "SPY", range: "3mo" };
 let hasPortfolio = false;
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function setTelegramStatus(text, cls) {
   const el = document.getElementById("telegram-status");
   el.textContent = text;
@@ -60,6 +69,75 @@ async function updateTelegramUI() {
     await apiFetch("/api/telegram/disconnect", { method: "DELETE" });
     updateTelegramUI();
   };
+}
+
+function renderMover(mover) {
+  if (!mover) return { value: "—", sub: "Нет данных" };
+  const sign = mover.change_percent >= 0 ? "+" : "";
+  return {
+    value: `${escapeHtml(mover.ticker)} ${sign}${mover.change_percent.toFixed(2)}%`,
+    sub: `${formatMoney(mover.price, mover.currency)} · ${escapeHtml(mover.name)}`,
+  };
+}
+
+function renderDailySummary(summary) {
+  const section = document.getElementById("daily-summary");
+  const grid = document.getElementById("daily-summary-grid");
+  const insights = document.getElementById("daily-insights");
+  if (!section || !grid || !insights) return;
+
+  section.classList.remove("hidden");
+  const best = renderMover(summary.best_mover);
+  const worst = renderMover(summary.worst_mover);
+  const nextDividend = summary.upcoming_dividends?.[0];
+
+  grid.innerHTML = `
+    <div class="daily-tile">
+      <p class="daily-label">Стоимость</p>
+      <p class="daily-value">${formatDualMoney(summary.total_value_usd, summary.total_value_rub, summary.usd_rub_rate)}</p>
+      <p class="daily-sub">${formatMoney(summary.total_pnl_usd)} · ${formatPercent(summary.total_pnl_percent)}</p>
+    </div>
+    <div class="daily-tile">
+      <p class="daily-label">Лидер дня</p>
+      <p class="daily-value">${best.value}</p>
+      <p class="daily-sub">${best.sub}</p>
+    </div>
+    <div class="daily-tile">
+      <p class="daily-label">Аутсайдер</p>
+      <p class="daily-value">${worst.value}</p>
+      <p class="daily-sub">${worst.sub}</p>
+    </div>
+    <div class="daily-tile">
+      <p class="daily-label">Контроль</p>
+      <p class="daily-value">${summary.active_alerts_count} алертов</p>
+      <p class="daily-sub">${summary.watchlist_count} в watchlist${nextDividend ? ` · ${escapeHtml(nextDividend.ticker)} див.` : ""}</p>
+    </div>
+  `;
+
+  insights.innerHTML = (summary.insights || [])
+    .map(
+      (item) => `
+      <div class="daily-insight ${escapeHtml(item.level || "info")}">
+        <p class="daily-insight-title">${escapeHtml(item.title)}</p>
+        <p class="daily-insight-msg">${escapeHtml(item.message)}</p>
+      </div>
+    `
+    )
+    .join("");
+}
+
+async function loadDailySummary() {
+  try {
+    const summary = await apiFetch("/api/portfolio/daily-summary", { timeoutMs: 60000 });
+    renderDailySummary(summary);
+  } catch (err) {
+    const section = document.getElementById("daily-summary");
+    if (section) {
+      section.classList.remove("hidden");
+      document.getElementById("daily-summary-grid").innerHTML = "";
+      document.getElementById("daily-insights").innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(err.message)}</p>`;
+    }
+  }
 }
 
 function riskBadgeClass(level) {
@@ -279,6 +357,7 @@ loadDashboard().catch((err) => {
     <p class="text-red-400 text-sm">${err.message}</p>
   `;
 });
+loadDailySummary();
 updateTelegramUI();
 window.addEventListener("focus", updateTelegramUI);
 

@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from openai import OpenAI
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, schemas
 from app.config import settings
 from app.schemas import CompanyProfile, MarketContext, PortfolioAnalysis, StockAnalysis, StockQuote
 from app.services.market_context import get_market_context
@@ -370,6 +370,8 @@ class AIAnalysisService:
             earnings=context.earnings if context else [],
             upcoming_earnings=context.upcoming_earnings if context else None,
             previous_rating=previous_rating,
+            analysis_delta=self._build_delta(previous_rating, rating),
+            data_quality=self._build_data_quality(profile, context),
         )
 
     def _parse_response(
@@ -402,6 +404,8 @@ class AIAnalysisService:
             earnings=context.earnings if context else [],
             upcoming_earnings=context.upcoming_earnings if context else None,
             previous_rating=previous_rating,
+            analysis_delta=self._build_delta(previous_rating, rating),
+            data_quality=self._build_data_quality(profile, context),
         )
 
     @staticmethod
@@ -409,6 +413,73 @@ class AIAnalysisService:
         if not isinstance(value, list):
             return []
         return [str(item) for item in value if item]
+
+    @staticmethod
+    def _build_delta(previous_rating: int | None, current_rating: int) -> schemas.AnalysisDelta:
+        if previous_rating is None:
+            return schemas.AnalysisDelta(
+                previous_rating=None,
+                current_rating=current_rating,
+                rating_change=None,
+                direction="new",
+                message="Это первый сохраненный анализ по тикеру для вашего аккаунта.",
+            )
+
+        change = current_rating - previous_rating
+        if change > 0:
+            direction = "up"
+            message = f"Оценка стала сильнее на {change} п.: было {previous_rating}/10, стало {current_rating}/10."
+        elif change < 0:
+            direction = "down"
+            message = f"Оценка стала слабее на {abs(change)} п.: было {previous_rating}/10, стало {current_rating}/10."
+        else:
+            direction = "flat"
+            message = f"Оценка не изменилась: {current_rating}/10."
+
+        return schemas.AnalysisDelta(
+            previous_rating=previous_rating,
+            current_rating=current_rating,
+            rating_change=change,
+            direction=direction,
+            message=message,
+        )
+
+    @staticmethod
+    def _build_data_quality(
+        profile: CompanyProfile,
+        context: MarketContext | None = None,
+    ) -> schemas.DataQuality:
+        f = profile.financials
+        checks = [
+            ("Цена", f.current_price is not None),
+            ("P/E", f.pe_ratio is not None),
+            ("EPS", f.eps is not None),
+            ("Market Cap", f.market_cap is not None),
+            ("Рост выручки", f.revenue_growth is not None),
+            ("Новости", bool(context and context.news)),
+            ("Отчетность", bool(context and (context.earnings or context.upcoming_earnings))),
+        ]
+        available = [label for label, ok in checks if ok]
+        missing = [label for label, ok in checks if not ok]
+        score = round(len(available) / len(checks) * 100)
+
+        if score >= 75:
+            level = "high"
+            message = "Данных достаточно для уверенного базового вывода."
+        elif score >= 45:
+            level = "medium"
+            message = "Данных достаточно для ориентира, но часть фундаментальных метрик отсутствует."
+        else:
+            level = "low"
+            message = "Данных мало: вывод стоит использовать только как предварительный ориентир."
+
+        return schemas.DataQuality(
+            score=score,
+            level=level,
+            available=available,
+            missing=missing,
+            message=message,
+        )
 
     def analyze_portfolio(self, db: Session, user_id: int) -> PortfolioAnalysis:
         holdings = crud.list_holdings(db, user_id)

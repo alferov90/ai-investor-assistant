@@ -109,6 +109,22 @@ class CompanyProfile(BaseModel):
     financials: StockDetail
 
 
+class DataQuality(BaseModel):
+    score: int = Field(ge=0, le=100)
+    level: str
+    available: list[str]
+    missing: list[str]
+    message: str
+
+
+class AnalysisDelta(BaseModel):
+    previous_rating: int | None = None
+    current_rating: int
+    rating_change: int | None = None
+    direction: str
+    message: str
+
+
 class StockAnalysis(BaseModel):
     ticker: str
     name: str
@@ -124,6 +140,8 @@ class StockAnalysis(BaseModel):
     earnings: list["EarningsEvent"] = []
     upcoming_earnings: "EarningsEvent | None" = None
     previous_rating: int | None = None
+    analysis_delta: "AnalysisDelta | None" = None
+    data_quality: "DataQuality | None" = None
 
 
 class NewsItem(BaseModel):
@@ -299,6 +317,35 @@ class PortfolioRisks(BaseModel):
     max_drawdown_pct: float | None = None
 
 
+class DailyMover(BaseModel):
+    ticker: str
+    name: str
+    change_percent: float
+    price: float
+    currency: str = "USD"
+
+
+class DailyInsight(BaseModel):
+    level: str = "info"
+    title: str
+    message: str
+
+
+class PortfolioDailySummary(BaseModel):
+    holdings_count: int
+    total_value_usd: float
+    total_value_rub: float
+    total_pnl_usd: float
+    total_pnl_percent: float
+    usd_rub_rate: float
+    best_mover: DailyMover | None = None
+    worst_mover: DailyMover | None = None
+    upcoming_dividends: list[DividendEvent] = []
+    active_alerts_count: int = 0
+    watchlist_count: int = 0
+    insights: list[DailyInsight] = []
+
+
 class WatchlistCreate(BaseModel):
     ticker: str = Field(min_length=1, max_length=16)
     notes: str = Field(default="", max_length=500)
@@ -318,6 +365,8 @@ class WatchlistRead(BaseModel):
     created_at: datetime
     current_price: float | None = None
     change_percent: float | None = None
+    currency: str = "USD"
+    market: str = "us"
 
 
 class AnalysisRecordRead(BaseModel):
