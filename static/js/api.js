@@ -78,11 +78,19 @@ function logout() {
 }
 
 function formatMoney(value, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
+  const locale = currency === "RUB" ? "ru-RU" : "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
   }).format(value);
+}
+
+function formatDualMoney(usdValue, rubValue, usdRubRate) {
+  const usd = formatMoney(usdValue, "USD");
+  if (!rubValue && !usdRubRate) return usd;
+  const rub = formatMoney(rubValue ?? usdValue * (usdRubRate || 0), "RUB");
+  return `${usd} · ${rub}`;
 }
 
 function formatPercent(value) {

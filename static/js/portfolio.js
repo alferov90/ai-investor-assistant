@@ -47,15 +47,17 @@ async function loadHoldings() {
   container.innerHTML = holdings
     .map((h) => {
       const q = quoteMap[h.ticker];
+      const currency = q?.currency || "USD";
+      const marketTag = q?.market === "moex" ? `<span class="badge badge-live text-xs ml-1">MOEX</span>` : "";
       const quoteLine = q
-        ? `<p class="text-sm mt-1">${formatMoney(q.price)} · ${formatMoney(q.value)} · <span class="${pnlClass(q.pnl)}">${formatMoney(q.pnl)} (${formatPercent(q.pnl_percent)})</span></p>`
+        ? `<p class="text-sm mt-1">${formatMoney(q.price, currency)} · ${formatMoney(q.value, currency)} · <span class="${pnlClass(q.pnl)}">${formatMoney(q.pnl, currency)} (${formatPercent(q.pnl_percent)})</span></p>`
         : "";
 
       return `
       <div class="glass-card glass-card-padded card-with-sparkline">
         <div class="card-body">
-          <p class="font-display font-semibold text-lg">${h.ticker}</p>
-          <p class="text-sm" style="color: var(--text-muted);">${h.shares} шт. × $${Number(h.avg_price).toFixed(2)}</p>
+          <p class="font-display font-semibold text-lg">${h.ticker}${marketTag}</p>
+          <p class="text-sm" style="color: var(--text-muted);">${h.shares} шт. × ${formatMoney(Number(h.avg_price), currency)}</p>
           ${quoteLine}
           ${h.notes ? `<p class="text-sm mt-1" style="color: var(--text-muted);">${h.notes}</p>` : ""}
         </div>

@@ -108,6 +108,11 @@ def transactions_page():
     return serve_page("transactions.html")
 
 
+@app.get("/dividends")
+def dividends_page():
+    return serve_page("dividends.html")
+
+
 @app.get("/alerts")
 def alerts_page():
     return serve_page("alerts.html")

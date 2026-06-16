@@ -206,6 +206,60 @@ function renderAnalysis(analysis) {
   document.getElementById("analysis-section").classList.remove("hidden");
 }
 
+function formatEarningsDate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value || "—";
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatEps(value) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `$${Number(value).toFixed(2)}`;
+}
+
+function surpriseClass(value) {
+  if (value == null || Number.isNaN(Number(value))) return "";
+  return Number(value) >= 0 ? "earnings-surprise-positive" : "earnings-surprise-negative";
+}
+
+function formatSurprise(value) {
+  if (value == null || Number.isNaN(Number(value))) return null;
+  const sign = Number(value) >= 0 ? "+" : "";
+  return `${sign}${Number(value).toFixed(1)}%`;
+}
+
+function renderEarningsCard(event) {
+  const surprise = formatSurprise(event.surprise_pct);
+  const period = event.period ? escapeHtml(event.period) : "Отчёт";
+  return `
+    <article class="earnings-card">
+      <div class="earnings-card-topline">
+        <span class="earnings-period">${period}</span>
+        <span class="earnings-date">${formatEarningsDate(event.date)}</span>
+      </div>
+      <div class="earnings-metrics">
+        <div class="earnings-metric">
+          <span class="earnings-metric-label">EPS факт</span>
+          <span class="earnings-metric-value">${formatEps(event.eps_actual)}</span>
+        </div>
+        <div class="earnings-metric">
+          <span class="earnings-metric-label">EPS прогноз</span>
+          <span class="earnings-metric-value earnings-metric-muted">${formatEps(event.eps_estimate)}</span>
+        </div>
+      </div>
+      ${
+        surprise
+          ? `<span class="earnings-surprise ${surpriseClass(event.surprise_pct)}">Surprise ${escapeHtml(surprise)}</span>`
+          : `<span class="earnings-surprise earnings-surprise-neutral">Surprise —</span>`
+      }
+    </article>
+  `;
+}
+
 function renderContext(analysis) {
   const section = document.getElementById("context-section");
   section.classList.remove("hidden");
@@ -268,16 +322,7 @@ function renderContext(analysis) {
   const histList = document.getElementById("earnings-list");
   if (analysis.earnings?.length) {
     histSection.classList.remove("hidden");
-    histList.innerHTML = analysis.earnings
-      .map((e) => {
-        const parts = [e.date];
-        if (e.period) parts.push(e.period);
-        if (e.eps_actual != null) parts.push(`EPS ${e.eps_actual}`);
-        if (e.eps_estimate != null) parts.push(`est ${e.eps_estimate}`);
-        if (e.surprise_pct != null) parts.push(`${e.surprise_pct >= 0 ? "+" : ""}${e.surprise_pct.toFixed(1)}%`);
-        return `<p>${parts.join(" · ")}</p>`;
-      })
-      .join("");
+    histList.innerHTML = analysis.earnings.map((e) => renderEarningsCard(e)).join("");
   } else {
     histSection.classList.add("hidden");
   }

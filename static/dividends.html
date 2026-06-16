@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дивиденды — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="app-body">
+  <div class="app-bg"><div class="app-bg-orb app-bg-orb-1"></div><div class="app-bg-orb app-bg-orb-2"></div></div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
+    <main class="app-main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Дивиденды</h1>
+          <p class="page-subtitle">Календарь выплат MOEX и оценка дивидендного дохода портфеля</p>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="stat-card">
+          <p class="stat-label">Годовой доход (оценка)</p>
+          <p id="stat-annual-usd" class="stat-value">—</p>
+          <p id="stat-annual-rub" class="text-sm mt-1" style="color: var(--text-muted);">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Получено (журнал)</p>
+          <p id="stat-received" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Курс USD/RUB</p>
+          <p id="stat-fx" class="stat-value">—</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Ближайшие выплаты</p>
+          <p id="stat-upcoming" class="stat-value">—</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6 mb-8">
+        <div class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-4">Календарь</h2>
+          <div id="upcoming-list"></div>
+        </div>
+        <div class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-4">Доходность по позициям</h2>
+          <div id="holdings-list"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="/static/js/api.js?v=2"></script>
+  <script src="/static/js/layout.js?v=2"></script>
+  <script src="/static/js/dividends.js?v=1"></script>
+  <script>injectLogo("app-logo");</script>
+</body>
+</html>

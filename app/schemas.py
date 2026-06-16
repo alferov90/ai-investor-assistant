@@ -91,6 +91,7 @@ class StockQuote(BaseModel):
     change: float
     change_percent: float
     currency: str = "USD"
+    market: str = "us"
     market_cap: float | None = None
     pe_ratio: float | None = None
     fifty_two_week_high: float | None = None
@@ -228,8 +229,42 @@ class DashboardStats(BaseModel):
     total_value: float
     total_pnl: float
     total_pnl_percent: float
+    usd_rub_rate: float = 0
+    total_value_rub: float = 0
+    total_cost_rub: float = 0
     top_holdings: list[dict]
     chart_holdings: list[dict] = []
+
+
+class DividendEvent(BaseModel):
+    ticker: str
+    ex_date: str
+    pay_date: str | None = None
+    amount: float
+    currency: str = "RUB"
+    market: str = "moex"
+
+
+class HoldingDividendSummary(BaseModel):
+    ticker: str
+    name: str
+    shares: float
+    currency: str
+    market: str = "us"
+    price: float
+    dividend_yield: float | None = None
+    annual_income: float | None = None
+    next_dividend: DividendEvent | None = None
+    recent_dividends: list[DividendEvent] = []
+
+
+class PortfolioDividends(BaseModel):
+    usd_rub_rate: float
+    total_annual_income_usd: float
+    total_annual_income_rub: float
+    dividends_received: float
+    holdings: list[HoldingDividendSummary]
+    upcoming: list[DividendEvent]
 
 
 class BenchmarkPoint(BaseModel):

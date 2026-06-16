@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from app.config import settings
 from app.redis_client import cache_get, cache_set
 from app.schemas import CompanyProfile, StockDetail, StockHistory, StockQuote
+from app.services.moex_service import fetch_moex_history, fetch_moex_quote, is_moex_ticker
 
 logger = logging.getLogger(__name__)
 TWELVE_DATA_TIMEOUT_SECONDS = 10
@@ -333,6 +334,28 @@ def fetch_price_history(symbol: str, range_: str = "3mo") -> StockHistory:
     if cached:
         return StockHistory(**cached)
 
+    if is_moex_ticker(symbol):
+        try:
+            points, currency = _run_with_timeout(fetch_moex_history, symbol, range_)
+            first = points[0]["close"]
+            last = points[-1]["close"]
+            change_pct = round((last - first) / first * 100, 2) if first else 0.0
+            result = StockHistory(
+                ticker=symbol,
+                range=range_,
+                currency=currency,
+                change_percent=change_pct,
+                points=points,
+                source="moex",
+            )
+            cache_set(cache_key, result.model_dump(), 600)
+            logger.info("Price history for %s (%s) via moex", symbol, range_)
+            return result
+        except FuturesTimeoutError:
+            logger.warning("moex history timeout for %s", symbol)
+        except Exception as exc:
+            logger.warning("moex history failed for %s: %s", symbol, exc)
+
     providers: list[tuple[str, Any]] = []
     if settings.twelve_data_api_key:
         providers.append(("twelve_data", _fetch_twelve_data_history))
@@ -370,8 +393,19 @@ def fetch_price_history(symbol: str, range_: str = "3mo") -> StockHistory:
 
 
 def fetch_market_data(symbol: str) -> tuple[dict[str, Any], list[float]]:
-    """Finnhub fundamentals → Twelve Data → Yahoo Chart → Stooq."""
+    """MOEX for RU tickers; Finnhub → Twelve Data → Yahoo → Stooq for US."""
     symbol = symbol.strip().upper()
+
+    if is_moex_ticker(symbol):
+        try:
+            info = _run_with_timeout(fetch_moex_quote, symbol)
+            logger.info("Market data for %s via moex", symbol)
+            return info, _EMPTY_HISTORY
+        except FuturesTimeoutError:
+            logger.warning("moex timeout for %s", symbol)
+        except Exception as exc:
+            logger.warning("moex failed for %s: %s", symbol, exc)
+
     providers: list[tuple[str, Any]] = []
 
     if settings.finnhub_api_key:
@@ -495,6 +529,7 @@ class StockService:
             change=round(change, 2),
             change_percent=round(change_percent, 2),
             currency=str(info.get("currency") or "USD"),
+            market=str(info.get("_market") or "us"),
             market_cap=_safe_float(info.get("marketCap")),
             pe_ratio=_safe_float(info.get("trailingPE")),
             fifty_two_week_high=_safe_float(info.get("fiftyTwoWeekHigh")),

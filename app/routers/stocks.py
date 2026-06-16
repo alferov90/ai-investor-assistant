@@ -9,6 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import User
 from app.services.ai_analysis import ai_analysis_service
+from app.services.dividend_service import get_ticker_dividends
 from app.services.market_context import get_market_context
 from app.services.stock_service import stock_service
 
@@ -43,6 +44,14 @@ async def get_history(
 ):
     logger.info("GET history %s range=%s", ticker.upper(), range)
     return await run_in_threadpool(stock_service.get_history, ticker, range)
+
+
+@router.get("/{ticker}/dividends", response_model=list[schemas.DividendEvent])
+async def get_dividends(
+    ticker: str,
+    _: User = Depends(get_current_user),
+):
+    return await run_in_threadpool(get_ticker_dividends, ticker)
 
 
 @router.get("/{ticker}/context", response_model=schemas.MarketContext)

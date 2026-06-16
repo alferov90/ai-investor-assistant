@@ -14,6 +14,7 @@ function renderNav(active) {
     ["Dashboard", "/dashboard"],
     ["Портфель", "/portfolio"],
     ["Сделки", "/transactions"],
+    ["Дивиденды", "/dividends"],
     ["Watchlist", "/watchlist"],
     ["Анализ", "/analysis"],
     ["История", "/history"],

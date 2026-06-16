@@ -188,12 +188,25 @@ async function loadDashboard() {
 
   document.getElementById("welcome").textContent = `Привет, ${user.name}`;
 
-  document.getElementById("total-value").textContent = formatMoney(stats.total_value);
-  document.getElementById("total-cost").textContent = formatMoney(stats.total_cost);
+  document.getElementById("total-value").textContent = formatDualMoney(
+    stats.total_value,
+    stats.total_value_rub,
+    stats.usd_rub_rate
+  );
+  document.getElementById("total-cost").textContent = formatDualMoney(
+    stats.total_cost,
+    stats.total_cost_rub,
+    stats.usd_rub_rate
+  );
 
   const pnlEl = document.getElementById("total-pnl");
   pnlEl.textContent = `${formatMoney(stats.total_pnl)} (${formatPercent(stats.total_pnl_percent)})`;
   pnlEl.className = `stat-value ${pnlClass(stats.total_pnl)}`;
+
+  if (stats.usd_rub_rate) {
+    const fxHint = document.getElementById("fx-hint");
+    if (fxHint) fxHint.textContent = `USD/RUB ${stats.usd_rub_rate.toFixed(2)} · MOEX + US в USD-эквиваленте`;
+  }
 
   document.getElementById("holdings-count").textContent = stats.holdings_count;
 
@@ -215,11 +228,16 @@ async function loadDashboard() {
 
   if (chartHoldings.length) {
     chartsRow.classList.remove("hidden");
+    const chartData = chartHoldings.map((h) => ({
+      ...h,
+      value: h.value_usd ?? h.value,
+      pnl: h.pnl_usd ?? h.pnl,
+    }));
     createAllocationDoughnut(
       document.getElementById("allocation-chart"),
-      chartHoldings
+      chartData
     );
-    createPnlBarChart(document.getElementById("pnl-chart"), chartHoldings);
+    createPnlBarChart(document.getElementById("pnl-chart"), chartData);
   } else {
     chartsRow.classList.add("hidden");
   }
@@ -241,8 +259,8 @@ async function loadDashboard() {
           <p class="text-slate-400 text-sm">${h.name}</p>
         </div>
         <div class="text-right">
-          <p class="font-medium">${formatMoney(h.value)}</p>
-          <p class="text-sm ${pnlClass(h.pnl)}">${formatMoney(h.pnl)} (${formatPercent(h.pnl_percent)})</p>
+          <p class="font-medium">${formatMoney(h.value, h.currency || "USD")}</p>
+          <p class="text-sm ${pnlClass(h.pnl)}">${formatMoney(h.pnl, h.currency || "USD")} (${formatPercent(h.pnl_percent)})</p>
         </div>
       </div>
     `
