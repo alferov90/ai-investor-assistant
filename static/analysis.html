@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Анализ — AI Investor</title>
-  <link rel="stylesheet" href="/static/css/theme.css?v=2">
+  <link rel="stylesheet" href="/static/css/theme.css?v=4">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="app-body">
@@ -85,12 +85,12 @@
             <p id="earnings-text" class="text-sm" style="color: var(--text-muted);"></p>
           </div>
           <div id="news-section" class="hidden glass-card glass-card-padded">
-            <h3 class="font-display font-bold mb-4">Новости</h3>
+            <h3 class="chart-title mb-4">Новости</h3>
             <div id="news-list" class="news-grid"></div>
           </div>
           <div id="earnings-history" class="hidden glass-card glass-card-padded">
-            <h3 class="font-display font-bold mb-4">История отчётности</h3>
-            <div id="earnings-list" class="space-y-2 text-sm"></div>
+            <h3 class="chart-title mb-4">История отчётности</h3>
+            <div id="earnings-list" class="earnings-grid"></div>
           </div>
         </div>
 
@@ -124,7 +124,7 @@
   <script src="/static/js/api.js"></script>
   <script src="/static/js/layout.js"></script>
   <script src="/static/js/charts.js?v=1"></script>
-  <script src="/static/js/analysis.js"></script>
+  <script src="/static/js/analysis.js?v=4"></script>
   <script>injectLogo("app-logo"); renderNav("/analysis");</script>
 </body>
 </html>
