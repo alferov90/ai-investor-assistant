@@ -163,15 +163,15 @@ class TInvestService:
             token,
             "InstrumentsService",
             "FindInstrument",
-            {"query": ticker},
+            {"query": ticker, "apiTradeAvailableFlag": True},
             sandbox,
         )
         candidates = data.get("instruments", [])
         exact = [
             item for item in candidates
-            if (item.get("ticker") or "").upper() == ticker and item.get("instrumentUid")
+            if (item.get("ticker") or "").upper() == ticker and (item.get("uid") or item.get("instrumentUid"))
         ]
-        pool = exact or [item for item in candidates if item.get("instrumentUid")]
+        pool = exact or [item for item in candidates if item.get("uid") or item.get("instrumentUid")]
         if not pool:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -182,7 +182,7 @@ class TInvestService:
         return TInvestInstrument(
             ticker=(item.get("ticker") or ticker).upper(),
             name=item.get("name") or ticker,
-            instrument_id=item.get("instrumentUid") or item.get("figi") or "",
+            instrument_id=item.get("uid") or item.get("instrumentUid") or item.get("figi") or "",
             currency=(item.get("currency") or "rub").upper(),
             lot=int(item.get("lot") or 1),
             exchange=item.get("exchange") or "",
