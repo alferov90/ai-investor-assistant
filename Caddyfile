@@ -1,0 +1,7 @@
+investor-assistant.ru {
+	reverse_proxy api:8000
+}
+
+www.investor-assistant.ru {
+	redir https://investor-assistant.ru{uri} permanent
+}

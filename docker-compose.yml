@@ -82,6 +82,23 @@ services:
       retries: 3
       start_period: 20s
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: investor-caddy
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:
+  caddy-data:
+  caddy-config:
