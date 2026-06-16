@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+import json
 from uuid import uuid4
 
 import httpx
@@ -56,8 +57,18 @@ def _quotation_from_decimal(value: Decimal) -> dict:
 def _friendly_error(exc: Exception) -> HTTPException:
     text = str(exc)
     detail = "Не удалось подключиться к T-Invest. Проверьте токен и доступ к счету."
+    try:
+        payload = json.loads(text[text.index("{"):])
+        message = payload.get("message") or payload.get("description")
+        if message:
+            detail = f"T-Invest: {message}"
+    except (ValueError, json.JSONDecodeError):
+        pass
+
     if "40003" in text or "Authentication token" in text or "401" in text:
         detail = "T-Invest отклонил токен. Проверьте, что токен актуален и скопирован полностью."
+    elif "403" in text or "PermissionDenied" in text or "permission" in text.lower():
+        detail = "T-Invest отказал в доступе. Проверьте права токена и выбранный счет."
     elif "sandbox" in text.lower():
         detail = "Похоже, тип токена не совпадает с режимом Sandbox."
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
@@ -133,6 +144,22 @@ class TInvestService:
         )
         return data.get("instrument", {})
 
+    def _instrument_by_ticker(
+        self, token: str, sandbox: bool, ticker: str, class_code: str
+    ) -> dict:
+        data = self._call(
+            token,
+            "InstrumentsService",
+            "GetInstrumentBy",
+            {
+                "idType": "INSTRUMENT_ID_TYPE_TICKER",
+                "classCode": class_code,
+                "id": ticker,
+            },
+            sandbox,
+        )
+        return data.get("instrument", {})
+
     def _resolve_instrument(self, token: str, sandbox: bool, position: dict) -> tuple[str, str, str]:
         figi = position.get("figi") or ""
         uid = position.get("instrumentUid") or ""
@@ -159,26 +186,41 @@ class TInvestService:
 
     def find_instrument(self, token: str, ticker: str, sandbox: bool = False) -> TInvestInstrument:
         ticker = ticker.strip().upper()
-        data = self._call(
-            token,
-            "InstrumentsService",
-            "FindInstrument",
-            {"query": ticker, "apiTradeAvailableFlag": True},
-            sandbox,
-        )
-        candidates = data.get("instruments", [])
+        candidates = []
+        try:
+            data = self._call(
+                token,
+                "InstrumentsService",
+                "FindInstrument",
+                {"query": ticker, "apiTradeAvailableFlag": True},
+                sandbox,
+            )
+            candidates = data.get("instruments", [])
+        except HTTPException:
+            candidates = []
         exact = [
             item for item in candidates
             if (item.get("ticker") or "").upper() == ticker and (item.get("uid") or item.get("instrumentUid"))
         ]
         pool = exact or [item for item in candidates if item.get("uid") or item.get("instrumentUid")]
-        if not pool:
+        if pool:
+            item = pool[0]
+        else:
+            item = {}
+            for class_code in ("TQBR", "SPBXM", "SPBDE", "TQTF", "TQOB"):
+                try:
+                    item = self._instrument_by_ticker(token, sandbox, ticker, class_code)
+                except HTTPException:
+                    continue
+                if item:
+                    break
+
+        if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"T-Invest не нашел инструмент {ticker}.",
             )
 
-        item = pool[0]
         return TInvestInstrument(
             ticker=(item.get("ticker") or ticker).upper(),
             name=item.get("name") or ticker,
