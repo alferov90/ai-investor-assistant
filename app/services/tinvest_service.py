@@ -248,7 +248,7 @@ class TInvestService:
                 continue
 
             instrument_type = (item.get("instrumentType") or "").lower()
-            if instrument_type and instrument_type not in {"share", "bond", "etf", "currency"}:
+            if instrument_type and instrument_type not in {"share", "bond", "etf"}:
                 continue
 
             ticker, name, currency = self._resolve_instrument(token, sandbox, item)
@@ -301,6 +301,17 @@ class TInvestService:
             sandbox,
         )
         return data.get("orders", [])
+
+    def get_order_state(
+        self, token: str, account_id: str, order_id: str, sandbox: bool = False
+    ) -> dict:
+        return self._call(
+            token,
+            "OrdersService",
+            "GetOrderState",
+            {"accountId": account_id, "orderId": order_id},
+            sandbox,
+        )
 
     def cancel_order(
         self, token: str, account_id: str, order_id: str, sandbox: bool = False

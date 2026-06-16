@@ -66,7 +66,7 @@ function statusLabel(status) {
     EXECUTION_REPORT_STATUS_FILL: "Исполнена",
     EXECUTION_REPORT_STATUS_REJECTED: "Отклонена",
     EXECUTION_REPORT_STATUS_CANCELLED: "Отменена",
-    EXECUTION_REPORT_STATUS_NEW: "Новая",
+    EXECUTION_REPORT_STATUS_NEW: "Ждёт исполнения",
     EXECUTION_REPORT_STATUS_PARTIALLYFILL: "Частично исполнена",
   };
   return labels[status] || status || "—";

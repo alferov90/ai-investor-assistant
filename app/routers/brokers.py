@@ -29,6 +29,48 @@ def _order_status(data: dict) -> str:
     return data.get("executionReportStatus") or data.get("execution_report_status") or ""
 
 
+def _lots_executed(data: dict) -> int:
+    return int(data.get("lotsExecuted") or data.get("lots_executed") or 0)
+
+
+def _is_final_status(status_value: str) -> bool:
+    return status_value in {
+        "EXECUTION_REPORT_STATUS_FILL",
+        "EXECUTION_REPORT_STATUS_REJECTED",
+        "EXECUTION_REPORT_STATUS_CANCELLED",
+    }
+
+
+async def _refresh_order_state(
+    order: models.BrokerOrder,
+    db: Session,
+    current_user: models.User,
+) -> models.BrokerOrder:
+    if _is_final_status(order.status):
+        return order
+    connection = crud.get_broker_connection(db, current_user.id, order.connection_id)
+    if not connection:
+        return order
+    try:
+        token = decrypt_secret(connection.token_encrypted)
+        state = await run_in_threadpool(
+            tinvest_service.get_order_state,
+            token,
+            connection.account_id,
+            order.order_id,
+            connection.sandbox,
+        )
+    except Exception:
+        return order
+    return crud.update_broker_order_status(
+        db,
+        order,
+        status=_order_status(state) or order.status,
+        lots_executed=_lots_executed(state),
+        message=state.get("message") or order.message,
+    )
+
+
 async def _order_preview(
     data: schemas.BrokerOrderPreviewRequest,
     db: Session,
@@ -219,11 +261,15 @@ async def sync_connection(
 
 
 @router.get("/orders", response_model=list[schemas.BrokerOrderRead])
-def list_orders(
+async def list_orders(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    return crud.list_broker_orders(db, current_user.id)
+    orders = crud.list_broker_orders(db, current_user.id)
+    refreshed = []
+    for order in orders:
+        refreshed.append(await _refresh_order_state(order, db, current_user))
+    return refreshed
 
 
 @router.post("/orders/preview", response_model=schemas.BrokerOrderPreview)
@@ -261,7 +307,7 @@ async def place_order(
         sandbox=connection.sandbox,
     )
     provider_order_id = response.get("orderId") or response.get("order_id") or request_id
-    lots_executed = int(response.get("lotsExecuted") or response.get("lots_executed") or 0)
+    lots_executed = _lots_executed(response)
     order = crud.create_broker_order(
         db,
         current_user.id,
@@ -282,7 +328,11 @@ async def place_order(
     return schemas.BrokerOrderPlaceResult(
         order=order,
         provider_response=response,
-        message="Лимитная заявка отправлена в T-Invest.",
+        message=(
+            "Заявка исполнена. Обновите синхронизацию портфеля."
+            if _is_final_status(order.status) and order.lots_executed > 0
+            else "Лимитная заявка выставлена. Позиция появится в портфеле после исполнения и синхронизации."
+        ),
     )
 
 
