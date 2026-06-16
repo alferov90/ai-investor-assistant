@@ -391,3 +391,91 @@ def get_latest_analysis_rating(db: Session, user_id: int, ticker: str) -> int | 
         .first()
     )
     return record.rating if record else None
+
+
+# --- Broker connections ---
+
+
+def list_broker_connections(db: Session, user_id: int) -> list[models.BrokerConnection]:
+    return (
+        db.query(models.BrokerConnection)
+        .filter(models.BrokerConnection.user_id == user_id)
+        .order_by(models.BrokerConnection.created_at.desc())
+        .all()
+    )
+
+
+def get_broker_connection(
+    db: Session, user_id: int, connection_id: int
+) -> models.BrokerConnection | None:
+    return (
+        db.query(models.BrokerConnection)
+        .filter(
+            models.BrokerConnection.id == connection_id,
+            models.BrokerConnection.user_id == user_id,
+        )
+        .first()
+    )
+
+
+def upsert_broker_connection(
+    db: Session,
+    user_id: int,
+    *,
+    provider: str,
+    account_id: str,
+    account_name: str,
+    account_type: str,
+    access_level: str,
+    token_encrypted: str,
+    token_mask: str,
+    sandbox: bool,
+) -> models.BrokerConnection:
+    connection = (
+        db.query(models.BrokerConnection)
+        .filter(
+            models.BrokerConnection.user_id == user_id,
+            models.BrokerConnection.provider == provider,
+            models.BrokerConnection.account_id == account_id,
+        )
+        .first()
+    )
+    if not connection:
+        connection = models.BrokerConnection(
+            user_id=user_id,
+            provider=provider,
+            account_id=account_id,
+        )
+        db.add(connection)
+
+    connection.account_name = account_name
+    connection.account_type = account_type
+    connection.access_level = access_level
+    connection.token_encrypted = token_encrypted
+    connection.token_mask = token_mask
+    connection.sandbox = sandbox
+    connection.is_active = True
+    connection.last_error = None
+    db.commit()
+    db.refresh(connection)
+    return connection
+
+
+def mark_broker_sync_success(db: Session, connection: models.BrokerConnection) -> None:
+    from datetime import datetime, timezone
+
+    connection.last_synced_at = datetime.now(timezone.utc)
+    connection.last_error = None
+    db.commit()
+
+
+def mark_broker_sync_error(
+    db: Session, connection: models.BrokerConnection, message: str
+) -> None:
+    connection.last_error = message[:500]
+    db.commit()
+
+
+def delete_broker_connection(db: Session, connection: models.BrokerConnection) -> None:
+    db.delete(connection)
+    db.commit()

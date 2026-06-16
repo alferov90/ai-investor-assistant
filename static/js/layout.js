@@ -13,6 +13,7 @@ function renderNav(active) {
   const links = [
     ["Dashboard", "/dashboard"],
     ["Портфель", "/portfolio"],
+    ["Брокер", "/broker"],
     ["Сделки", "/transactions"],
     ["Дивиденды", "/dividends"],
     ["Watchlist", "/watchlist"],

@@ -48,6 +48,9 @@ class User(Base):
     transactions: Mapped[list["PortfolioTransaction"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    broker_connections: Mapped[list["BrokerConnection"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
 
 
 class PortfolioHolding(Base):
@@ -153,3 +156,36 @@ class PortfolioTransaction(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="transactions")
+
+
+class BrokerConnection(Base):
+    __tablename__ = "broker_connections"
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider", "account_id", name="uq_broker_user_provider_account"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32), default="tinvest", index=True)
+    account_id: Mapped[str] = mapped_column(String(128), index=True)
+    account_name: Mapped[str] = mapped_column(String(200), default="")
+    account_type: Mapped[str] = mapped_column(String(64), default="")
+    access_level: Mapped[str] = mapped_column(String(64), default="")
+    token_encrypted: Mapped[str] = mapped_column(Text)
+    token_mask: Mapped[str] = mapped_column(String(32), default="")
+    sandbox: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="broker_connections")

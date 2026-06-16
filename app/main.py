@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.redis_client import get_redis
-from app.routers import alerts, analyses, auth, portfolio, stocks, telegram, transactions, watchlist
+from app.routers import alerts, analyses, auth, brokers, portfolio, stocks, telegram, transactions, watchlist
 from app.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +39,7 @@ app.include_router(auth.router)
 app.include_router(portfolio.router)
 app.include_router(stocks.router)
 app.include_router(watchlist.router)
+app.include_router(brokers.router)
 app.include_router(analyses.router)
 app.include_router(alerts.router)
 app.include_router(telegram.router)
@@ -86,6 +87,11 @@ def dashboard_page():
 @app.get("/portfolio")
 def portfolio_page():
     return serve_page("portfolio.html")
+
+
+@app.get("/broker")
+def broker_page():
+    return serve_page("broker.html")
 
 
 @app.get("/analysis")

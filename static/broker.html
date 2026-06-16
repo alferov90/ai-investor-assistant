@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Брокер — AI Investor</title>
+  <link rel="stylesheet" href="/static/css/theme.css?v=7">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="app-body">
+  <div class="app-bg"><div class="app-bg-orb app-bg-orb-1"></div><div class="app-bg-orb app-bg-orb-2"></div></div>
+  <div class="app-shell">
+    <nav class="app-nav">
+      <div class="app-nav-inner">
+        <span id="app-logo"></span>
+        <div id="main-nav" class="nav-links"></div>
+      </div>
+    </nav>
+
+    <main class="app-main">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Брокер</h1>
+          <p class="page-subtitle">Подключение T-Invest для чтения счетов и синхронизации портфеля</p>
+        </div>
+        <a href="https://www.tinkoff.ru/invest/settings/" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Выпустить токен</a>
+      </div>
+
+      <div class="broker-grid">
+        <section class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-2">Добавить T-Invest</h2>
+          <p class="text-sm mb-4" style="color: var(--text-muted);">Используйте read-only токен. Он не позволяет выставлять сделки и нужен только для портфеля.</p>
+
+          <form id="broker-form" class="space-y-4">
+            <div>
+              <label class="form-label">T-Invest API token</label>
+              <input id="tinvest-token" type="password" required minlength="10" class="input-field" placeholder="Вставьте read-only токен">
+            </div>
+            <label class="broker-check">
+              <input id="tinvest-sandbox" type="checkbox">
+              <span>Sandbox токен</span>
+            </label>
+            <button type="submit" class="btn btn-primary w-full">Проверить токен</button>
+          </form>
+
+          <div id="account-picker" class="hidden mt-5">
+            <label class="form-label">Счёт</label>
+            <select id="tinvest-account" class="input-field"></select>
+            <button id="btn-save-connection" class="btn btn-primary w-full mt-3">Сохранить подключение</button>
+          </div>
+
+          <p id="broker-error" class="text-negative text-sm mt-4"></p>
+          <p id="broker-status" class="text-sm mt-4" style="color: var(--text-muted);"></p>
+        </section>
+
+        <section class="glass-card glass-card-padded">
+          <h2 class="chart-title mb-2">Как это работает</h2>
+          <div class="daily-insights">
+            <div class="daily-insight ok">
+              <p class="daily-insight-title">Без сделок</p>
+              <p class="daily-insight-msg">На этом этапе сайт только читает счета и позиции. Торговля не включена.</p>
+            </div>
+            <div class="daily-insight info">
+              <p class="daily-insight-title">Синхронизация</p>
+              <p class="daily-insight-msg">Позиции из брокера обновят совпадающие тикеры и добавят новые. Ручные позиции без совпадения не удаляются.</p>
+            </div>
+            <div class="daily-insight warning">
+              <p class="daily-insight-title">Токен</p>
+              <p class="daily-insight-msg">Хранится зашифрованно. В интерфейсе показывается только начало и конец токена.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="glass-card glass-card-padded mt-8">
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-4">
+          <h2 class="chart-title">Подключенные счета</h2>
+          <button id="btn-refresh-connections" class="btn btn-secondary btn-sm">Обновить</button>
+        </div>
+        <div id="broker-connections" class="space-y-3">
+          <p class="text-sm" style="color: var(--text-muted);">Загрузка...</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/layout.js"></script>
+  <script src="/static/js/broker.js?v=1"></script>
+  <script>injectLogo("app-logo"); renderNav("/broker");</script>
+</body>
+</html>

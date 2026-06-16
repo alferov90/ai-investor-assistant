@@ -427,3 +427,63 @@ class PortfolioAnalysis(BaseModel):
     ai_powered: bool = True
     holdings_count: int
     tickers: list[str]
+
+
+class TInvestTokenPreview(BaseModel):
+    token: str = Field(min_length=10)
+    sandbox: bool = False
+
+
+class TInvestConnect(BaseModel):
+    token: str = Field(min_length=10)
+    account_id: str = Field(min_length=1)
+    sandbox: bool = False
+
+
+class BrokerAccount(BaseModel):
+    id: str
+    name: str
+    type: str
+    status: str
+    access_level: str
+    opened_at: datetime | None = None
+
+
+class BrokerConnectionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    provider: str
+    account_id: str
+    account_name: str
+    account_type: str
+    access_level: str
+    token_mask: str
+    sandbox: bool
+    is_active: bool
+    last_synced_at: datetime | None = None
+    last_error: str | None = None
+    created_at: datetime
+
+
+class BrokerPreview(BaseModel):
+    provider: str = "tinvest"
+    sandbox: bool = False
+    accounts: list[BrokerAccount]
+
+
+class BrokerSyncPosition(BaseModel):
+    ticker: str
+    name: str
+    quantity: float
+    avg_price: float
+    currency: str = "RUB"
+
+
+class BrokerSyncResult(BaseModel):
+    connection_id: int
+    account_id: str
+    imported: int
+    skipped: int
+    positions: list[BrokerSyncPosition]
+    message: str
