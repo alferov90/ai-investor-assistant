@@ -323,7 +323,10 @@ async function loadDashboard() {
   const container = document.getElementById("top-holdings");
   if (!stats.top_holdings.length) {
     container.innerHTML = `
-      <p class="text-sm" style="color: var(--text-muted);">Портфель пуст. <a href="/portfolio" class="link-accent">Добавьте первый тикер</a></p>
+      <div class="empty-state">
+        Портфель пока пуст. Добавьте первую позицию вручную или синхронизируйте брокерский счёт.
+        <a href="/portfolio" class="link-accent">Открыть портфель</a>
+      </div>
     `;
     return;
   }
@@ -331,14 +334,14 @@ async function loadDashboard() {
   container.innerHTML = stats.top_holdings
     .map(
       (h) => `
-      <div class="flex items-center justify-between py-3 divider-row">
+      <div class="data-row">
         <div>
-          <p class="font-medium">${h.ticker}</p>
-          <p class="text-slate-400 text-sm">${h.name}</p>
+          <p class="data-row-title">${escapeHtml(h.ticker)}</p>
+          <p class="data-row-sub">${escapeHtml(h.name)}</p>
         </div>
-        <div class="text-right">
-          <p class="font-medium">${formatMoney(h.value, h.currency || "USD")}</p>
-          <p class="text-sm ${pnlClass(h.pnl)}">${formatMoney(h.pnl, h.currency || "USD")} (${formatPercent(h.pnl_percent)})</p>
+        <div>
+          <p class="data-row-value">${formatMoney(h.value, h.currency || "USD")}</p>
+          <p class="data-row-meta ${pnlClass(h.pnl)}">${formatMoney(h.pnl, h.currency || "USD")} (${formatPercent(h.pnl_percent)})</p>
         </div>
       </div>
     `
@@ -354,7 +357,7 @@ loadDashboard().catch((err) => {
   document.getElementById("total-pnl").textContent = "—";
   document.getElementById("holdings-count").textContent = "—";
   document.getElementById("top-holdings").innerHTML = `
-    <p class="text-red-400 text-sm">${err.message}</p>
+    <div class="empty-state text-negative">${escapeHtml(err.message)}</div>
   `;
 });
 loadDailySummary();
@@ -364,24 +367,29 @@ window.addEventListener("focus", updateTelegramUI);
 document.getElementById("btn-portfolio-ai").onclick = async () => {
   const el = document.getElementById("portfolio-ai-result");
   el.classList.remove("hidden");
-  el.innerHTML = `<p class="text-slate-400">AI анализирует портфель...</p>`;
+  el.innerHTML = `<div class="empty-state">AI анализирует портфель и собирает короткий вывод...</div>`;
   try {
     const data = await apiFetch("/api/portfolio/ai-analysis", { method: "POST", timeoutMs: 90000 });
     el.innerHTML = `
-      <div class="flex items-center gap-2 mb-3">
-        <h2 class="font-semibold text-lg">AI-анализ портфеля</h2>
-        <span class="text-xs px-2 py-0.5 rounded-full ${data.ai_powered ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-700 text-slate-300"}">${data.ai_powered ? "GPT" : "Базовый"}</span>
-        <span class="text-amber-400 ml-auto">Рейтинг ${data.rating}/10</span>
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">${data.ai_powered ? "GPT-анализ" : "Базовый анализ"}</p>
+          <h2 class="chart-title">AI-анализ портфеля</h2>
+        </div>
+        <span class="risk-badge risk-${data.rating >= 8 ? "ok" : data.rating >= 6 ? "low" : data.rating >= 4 ? "medium" : "high"}">Рейтинг ${data.rating}/10</span>
       </div>
-      <p class="text-slate-300 mb-4">${data.summary}</p>
-      <p class="text-emerald-400 font-medium mb-4">${data.recommendation}</p>
-      <div class="grid md:grid-cols-3 gap-4 text-sm">
-        <div><h3 class="text-emerald-400 mb-1">Сильные</h3><ul>${data.strengths.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
-        <div><h3 class="text-amber-400 mb-1">Слабые</h3><ul>${data.weaknesses.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
-        <div><h3 class="text-red-400 mb-1">Риски</h3><ul>${data.risks.map(s=>`<li>• ${s}</li>`).join("")}</ul></div>
+      <p class="daily-insight-msg mb-4">${escapeHtml(data.summary)}</p>
+      <div class="daily-insight ok mb-4">
+        <p class="daily-insight-title">Рекомендация</p>
+        <p class="daily-insight-msg">${escapeHtml(data.recommendation)}</p>
+      </div>
+      <div class="analysis-meta-grid">
+        <div class="daily-insight ok"><p class="daily-insight-title">Сильные стороны</p><ul class="clean-list">${data.strengths.map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ul></div>
+        <div class="daily-insight warning"><p class="daily-insight-title">Слабые места</p><ul class="clean-list">${data.weaknesses.map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ul></div>
+        <div class="daily-insight"><p class="daily-insight-title">Риски</p><ul class="clean-list">${data.risks.map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ul></div>
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<p class="text-red-400">${err.message}</p>`;
+    el.innerHTML = `<div class="empty-state text-negative">${escapeHtml(err.message)}</div>`;
   }
 };

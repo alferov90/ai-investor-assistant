@@ -72,11 +72,11 @@ function savePersonalThesis() {
 function renderList(id, items) {
   const el = document.getElementById(id);
   if (!items.length) {
-    el.innerHTML = `<li class="text-slate-500">Нет данных</li>`;
+    el.innerHTML = `<li>Нет данных</li>`;
     return;
   }
   el.innerHTML = items
-    .map((item) => `<li class="flex gap-2"><span class="text-slate-500">•</span>${item}</li>`)
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
     .join("");
 }
 
@@ -249,9 +249,9 @@ function renderStockMeta(stock) {
   document.getElementById("stock-meta").innerHTML = meta
     .map(
       ([label, value]) => `
-      <div class="bg-slate-950 rounded-lg p-3">
-        <p class="text-slate-500 text-xs">${label}</p>
-        <p class="font-medium mt-0.5">${value}</p>
+      <div class="data-metric">
+        <p class="data-metric-label">${label}</p>
+        <p class="data-metric-value">${value}</p>
       </div>
     `
     )
@@ -261,7 +261,7 @@ function renderStockMeta(stock) {
 function renderAnalysis(analysis) {
   const ratingEl = document.getElementById("rating");
   ratingEl.textContent = analysis.rating;
-  ratingEl.className = `font-display text-2xl font-bold ${ratingColor(analysis.rating)}`;
+  ratingEl.className = `text-2xl font-bold ${ratingColor(analysis.rating)}`;
 
   createRatingGauge(document.getElementById("rating-gauge"), analysis.rating);
 
